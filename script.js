@@ -22,11 +22,11 @@ let products = []
 let filteredProducts = []
 let movies = []
 let games = []
+let allProducts = [] // New variable to store all products from all categories
 
 // Add new state variables for pagination
 let currentDisplayPage = 1;
 const productsPerPage = 8;
-let activeCategory = "jackets"; // Default category: jackets, movies, or games
 
 // Toggle mobile menu
 mobileMenuBtn.addEventListener("click", () => {
@@ -113,13 +113,24 @@ async function fetchAllProducts() {
     movies = moviesData.data || [];
     games = gamesData.data || [];
     
+    // Add category property to each product
+    products.forEach(item => item.productCategory = "jackets");
+    movies.forEach(item => item.productCategory = "movies");
+    games.forEach(item => item.productCategory = "games");
+    
+    // Combine all products
+    allProducts = [...products, ...movies, ...games];
+    
     console.log(`Loaded ${products.length} jackets, ${movies.length} movies, and ${games.length} games`);
+    console.log(`Total: ${allProducts.length} products`);
     
-    // Set up category toggle buttons
-    setupCategoryToggle();
+    // Set up filters
+    setupFilters();
     
-    // Set default category to jackets
-    switchCategory("jackets");
+    // Show all products initially
+    filteredProducts = [...allProducts];
+    displayProducts(filteredProducts);
+    addProductCountIndicator(filteredProducts.length);
     
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -129,117 +140,379 @@ async function fetchAllProducts() {
   }
 }
 
-// Set up category toggle buttons
-function setupCategoryToggle() {
-  // Add styles for category toggle buttons
-  if (!document.getElementById("categoryToggleStyles")) {
+// Set up filters based on loaded data
+function setupFilters() {
+  // Set up product category filter (main category filter)
+  populateMainCategoryFilter();
+  
+  // Set up secondary filters based on the default category (all)
+  updateSecondaryFilters("all");
+  
+  // Add reset button
+  addResetFiltersButton();
+}
+
+// Set up the main category filter (Jackets, Movies, Games)
+function populateMainCategoryFilter() {
+  // Clear existing options except "All Categories"
+  while (categoryFilter.options.length > 1) {
+    categoryFilter.remove(1);
+  }
+  
+  // Add main product categories
+  const mainCategories = [
+    { value: "jackets", label: "Jackets" },
+    { value: "movies", label: "Movies" },
+    { value: "games", label: "Games" }
+  ];
+  
+  mainCategories.forEach(cat => {
+    const option = document.createElement("option");
+    option.value = cat.value;
+    option.textContent = cat.label;
+    categoryFilter.appendChild(option);
+  });
+  
+  // Add change event listener to category filter
+  categoryFilter.addEventListener("change", function() {
+    const selectedCategory = this.value;
+    updateSecondaryFilters(selectedCategory);
+    filterProducts();
+  });
+}
+
+// Update secondary filters based on selected main category
+function updateSecondaryFilters(selectedCategory) {
+  const genreFilterLabel = document.querySelector(".genre-filter select");
+  const genderFilterContainer = document.querySelector(".gender-filter");
+  const genreFilterContainer = document.querySelector(".genre-filter");
+  
+  // Create or get the second genre filter for movies/games
+  let secondGenreFilter = document.getElementById("secondGenreFilter");
+  let secondGenreFilterContainer = document.querySelector(".second-genre-filter");
+  
+  if (!secondGenreFilterContainer) {
+    // Create the second genre filter container if it doesn't exist
+    secondGenreFilterContainer = document.createElement("div");
+    secondGenreFilterContainer.className = "second-genre-filter";
+    
+    const select = document.createElement("select");
+    select.id = "secondGenreFilter";
+    select.innerHTML = '<option value="all">All</option>';
+    
+    secondGenreFilterContainer.appendChild(select);
+    
+    // Add it after the first genre filter
+    const filtersContainer = document.querySelector(".filters");
+    filtersContainer.insertBefore(secondGenreFilterContainer, document.getElementById("resetFiltersBtn"));
+    
+    // Add event listener for the new filter
+    select.addEventListener("change", () => {
+      console.log("Second genre filter changed to:", select.value);
+      filterProducts();
+    });
+    
+    // Add styles for the new filter
     const style = document.createElement("style");
-    style.id = "categoryToggleStyles";
     style.textContent = `
-      .category-toggle {
-        display: flex;
-        justify-content: center;
-        gap: 1rem;
-        margin-bottom: 2rem;
+      .second-genre-filter {
+        width: 200px;
       }
-      
-      .category-toggle-btn {
-        background-color: var(--secondary-color);
-        color: var(--text-color);
-        border: none;
+      .second-genre-filter select {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--border-color);
         border-radius: var(--radius-md);
-        padding: 0.75rem 1.5rem;
-        font-size: 1rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: var(--transition);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-      
-      .category-toggle-btn.active {
-        background-color: var(--primary-color);
-        color: white;
-      }
-      
-      .category-toggle-btn:hover:not(.active) {
-        background-color: var(--border-color);
+        font-family: inherit;
+        background-color: white;
+        appearance: none;
+        background-image:
+        url("data:image/svg+xml; charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -5 16 16' fill='none' stroke='%23b4b4b4' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='11 2 13 4 15 2'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
       }
     `;
     document.head.appendChild(style);
   }
   
-  // Create toggle container
-  const toggleContainer = document.createElement("div");
-  toggleContainer.className = "category-toggle";
+  secondGenreFilter = document.getElementById("secondGenreFilter");
   
-  // Create toggle buttons
-  const jacketsBtn = document.createElement("button");
-  jacketsBtn.className = "category-toggle-btn active";
-  jacketsBtn.textContent = "Jackets";
-  jacketsBtn.addEventListener("click", () => switchCategory("jackets"));
+  // Reset all filters
+  while (genreFilter.options.length > 1) {
+    genreFilter.remove(1);
+  }
+  while (secondGenreFilter.options.length > 1) {
+    secondGenreFilter.remove(1);
+  }
   
-  const moviesBtn = document.createElement("button");
-  moviesBtn.className = "category-toggle-btn";
-  moviesBtn.textContent = "Movies";
-  moviesBtn.addEventListener("click", () => switchCategory("movies"));
-  
-  const gamesBtn = document.createElement("button");
-  gamesBtn.className = "category-toggle-btn";
-  gamesBtn.textContent = "Games";
-  gamesBtn.addEventListener("click", () => switchCategory("games"));
-  
-  // Append buttons to container
-  toggleContainer.appendChild(jacketsBtn);
-  toggleContainer.appendChild(moviesBtn);
-  toggleContainer.appendChild(gamesBtn);
-  
-  // Insert before the filters
-  const filtersContainer = document.querySelector(".filters");
-  const productsSection = document.querySelector(".products-section .container h2");
-  productsSection.parentNode.insertBefore(toggleContainer, productsSection.nextSibling);
+  // Handle display of filter sections based on category
+  if (selectedCategory === "all" || selectedCategory === "jackets") {
+    // Show gender filter, hide second genre filter
+    genderFilterContainer.style.display = "block";
+    genreFilterContainer.style.display = "block";
+    secondGenreFilterContainer.style.display = "none";
+    
+    // Update genre filter for jackets
+    genreFilter.options[0].textContent = "All Styles";
+    genreFilter.setAttribute("title", "Filter by style");
+    
+    // Populate with jacket styles/genres
+    if (selectedCategory === "jackets") {
+      populateJacketGenres(products);
+    } else {
+      populateJacketGenres(products);
+    }
+    
+  } else if (selectedCategory === "movies") {
+    // Show both genre filters, hide gender filter
+    genderFilterContainer.style.display = "none";
+    genreFilterContainer.style.display = "block";
+    secondGenreFilterContainer.style.display = "block";
+    
+    // Update first genre filter for movies - now for actual genres
+    genreFilter.options[0].textContent = "All Movie Genres";
+    genreFilter.setAttribute("title", "Filter by movie genre");
+    
+    // Populate with movie genres
+    populateMovieGenres(movies);
+    
+    // Update second genre filter for movie ratings
+    secondGenreFilter.options[0].textContent = "All Ratings";
+    secondGenreFilter.setAttribute("title", "Filter by rating");
+    
+    // Populate with movie ratings
+    populateMovieRatings(movies, secondGenreFilter);
+    
+  } else if (selectedCategory === "games") {
+    // Show both genre filters, hide gender filter
+    genderFilterContainer.style.display = "none";
+    genreFilterContainer.style.display = "block";
+    secondGenreFilterContainer.style.display = "block";
+    
+    // Update first genre filter for games - now for actual genres
+    genreFilter.options[0].textContent = "All Game Genres";
+    genreFilter.setAttribute("title", "Filter by game genre");
+    
+    // Populate with game genres
+    populateGameGenres(games);
+    
+    // Update second genre filter for game age ratings
+    secondGenreFilter.options[0].textContent = "All Age Ratings";
+    secondGenreFilter.setAttribute("title", "Filter by age rating");
+    
+    // Populate with game age ratings
+    populateGameAgeRatings(games, secondGenreFilter);
+  }
 }
 
-// Switch between product categories
-function switchCategory(category) {
-  activeCategory = category;
-  currentDisplayPage = 1; // Reset to first page
+// New function to populate movie genres
+function populateMovieGenres(movieProducts) {
+  const genres = new Set();
   
-  // Update active button
-  const buttons = document.querySelectorAll(".category-toggle-btn");
-  buttons.forEach(btn => {
-    if (btn.textContent.toLowerCase() === category) {
-      btn.classList.add("active");
-    } else {
-      btn.classList.remove("active");
+  movieProducts.forEach(movie => {
+    if (movie.genre) {
+      genres.add(movie.genre);
     }
   });
   
-  // Reset filters
-  resetFilters();
+  // Add each genre as an option
+  const sortedGenres = [...genres].sort();
+  sortedGenres.forEach(genre => {
+    const option = document.createElement("option");
+    option.value = genre.toLowerCase();
+    option.textContent = genre;
+    genreFilter.appendChild(option);
+  });
+}
+
+// New function to populate game genres
+function populateGameGenres(gameProducts) {
+  const genres = new Set();
   
-  // Show/hide filters based on category
-  const filtersContainer = document.querySelector(".filters");
-  if (category === "jackets") {
-    filtersContainer.style.display = "flex";
-    filteredProducts = [...products];
-    populateCategories(products);
-    populateGenreFilter(products);
-  } else if (category === "movies") {
-    filtersContainer.style.display = "flex";
-    filteredProducts = [...movies];
-    populateCategories(movies);
-    populateGenreFilter(movies);
-  } else if (category === "games") {
-    filtersContainer.style.display = "flex";
-    filteredProducts = [...games];
-    populateCategories(games);
-    populateGenreFilter(games);
+  gameProducts.forEach(game => {
+    if (game.genre) {
+      genres.add(game.genre);
+    }
+  });
+  
+  // Add each genre as an option
+  const sortedGenres = [...genres].sort();
+  sortedGenres.forEach(genre => {
+    const option = document.createElement("option");
+    option.value = genre.toLowerCase();
+    option.textContent = genre;
+    genreFilter.appendChild(option);
+  });
+}
+
+// Update the movie ratings function to handle and standardize ratings
+function populateMovieRatings(movieProducts, selectElement) {
+  // Use a Map to store standardized ratings (floor to whole numbers)
+  const ratings = new Map();
+  
+  movieProducts.forEach(movie => {
+    if (movie.rating) {
+      // Convert rating string to a number if possible
+      let ratingValue;
+      
+      // Try to parse the rating as a number
+      const parsedRating = parseFloat(movie.rating);
+      if (!isNaN(parsedRating)) {
+        // Round down to a whole number
+        ratingValue = Math.floor(parsedRating);
+      } else {
+        // For non-numeric ratings, just store as is
+        ratingValue = movie.rating;
+      }
+      
+      // Store the standardized rating in the map with the original rating as value
+      ratings.set(ratingValue.toString(), movie.rating);
+    }
+  });
+  
+  // Create predefined ratings from 5-10 for movies
+  const predefinedRatings = [5, 6, 7, 8, 9, 10];
+  
+  // Add each rating as an option, ensuring we have options 5-10
+  predefinedRatings.forEach(rating => {
+    const option = document.createElement("option");
+    option.value = rating.toString();
+    option.textContent = rating.toString();
+    selectElement.appendChild(option);
+  });
+  
+  console.log("Available movie ratings (standardized):", [...ratings.keys()]);
+}
+
+// Update to use the passed select element
+function populateGameAgeRatings(gameProducts, selectElement) {
+  const platforms = new Set();
+  
+  gameProducts.forEach(game => {
+    if (game.ageRating) {
+      platforms.add(game.ageRating);
+    }
+  });
+  
+  // Add each platform as an option
+  const sortedPlatforms = [...platforms].sort();
+  sortedPlatforms.forEach(platform => {
+    if (platform && platform.trim() !== '') {
+      const option = document.createElement("option");
+      option.value = platform.toLowerCase();
+      option.textContent = platform;
+      selectElement.appendChild(option);
+    }
+  });
+}
+
+// Filter products based on search, category, gender, and genre
+function filterProducts() {
+  const searchTerm = searchInput.value.toLowerCase();
+  const mainCategory = categoryFilter.value.toLowerCase();
+  const gender = genderFilter.value;
+  const genre = genreFilter.value.toLowerCase();
+  const secondGenre = document.getElementById("secondGenreFilter")?.value.toLowerCase() || "all";
+
+  console.log("Filtering with:", {
+    searchTerm,
+    mainCategory,
+    gender,
+    genre,
+    secondGenre
+  });
+
+  // Reset to first page when applying filters
+  currentDisplayPage = 1;
+
+  // Start with all products or the selected category
+  let currentProducts = [];
+  if (mainCategory === "all") {
+    currentProducts = [...allProducts];
+  } else if (mainCategory === "jackets") {
+    currentProducts = [...products];
+  } else if (mainCategory === "movies") {
+    currentProducts = [...movies];
+  } else if (mainCategory === "games") {
+    currentProducts = [...games];
   }
-  
-  // Display the appropriate products
+
+  // If all filters are at their default values and we're showing a specific category,
+  // just show all products from that category
+  if (searchTerm === "" && gender === "all" && genre === "all" && secondGenre === "all") {
+    filteredProducts = [...currentProducts];
+    console.log(`Showing all ${mainCategory !== "all" ? mainCategory : "products"}:`, filteredProducts.length);
+    displayProducts(filteredProducts);
+    return;
+  }
+
+  // Filter the products
+  filteredProducts = currentProducts.filter((product) => {
+    // Match search term in title or description
+    const matchesSearch =
+      searchTerm === "" ||
+      product.title.toLowerCase().includes(searchTerm) || 
+      (product.description && product.description.toLowerCase().includes(searchTerm));
+    
+    // Match gender - only applies to jackets
+    const matchesGender = 
+      gender === "all" || 
+      product.productCategory !== "jackets" || // Always match if not jackets
+      (gender === "men" && product.gender === "Male") ||
+      (gender === "women" && product.gender === "Female") ||
+      (gender === "unisex" && product.gender === "Unisex");
+    
+    // Match genre - different handling for different product types
+    let matchesGenre = genre === "all";
+    
+    if (!matchesGenre) {
+      if (product.productCategory === "jackets") {
+        // For jackets, check title, description, tags
+        const titleMatch = product.title.toLowerCase().includes(genre);
+        const descMatch = product.description && product.description.toLowerCase().includes(genre);
+        const tagMatch = product.tags && product.tags.some(tag => 
+          tag.toLowerCase().includes(genre) || genre.includes(tag.toLowerCase())
+        );
+        matchesGenre = titleMatch || descMatch || tagMatch;
+      } else if (product.productCategory === "movies") {
+        // For movies, check genre
+        matchesGenre = product.genre && product.genre.toLowerCase() === genre;
+      } else if (product.productCategory === "games") {
+        // For games, check genre
+        matchesGenre = product.genre && product.genre.toLowerCase() === genre;
+      }
+    }
+    
+    // Match second genre (used for ratings in movies/games)
+    let matchesSecondGenre = secondGenre === "all";
+    
+    if (!matchesSecondGenre) {
+      if (product.productCategory === "movies") {
+        // For movies, check if the rating starts with the selected value
+        // This will match, for example, "6" with "6.5", "6.7", etc.
+        if (product.rating) {
+          // Try to parse the rating as a number
+          const parsedRating = parseFloat(product.rating);
+          if (!isNaN(parsedRating)) {
+            // Check if the floor of the rating equals the selected value
+            const flooredRating = Math.floor(parsedRating).toString();
+            matchesSecondGenre = flooredRating === secondGenre;
+          } else {
+            // For non-numeric ratings, try direct match
+            matchesSecondGenre = product.rating.toLowerCase() === secondGenre;
+          }
+        }
+      } else if (product.productCategory === "games") {
+        // For games, check age rating
+        matchesSecondGenre = product.ageRating && product.ageRating.toLowerCase() === secondGenre;
+      }
+    }
+
+    return matchesSearch && matchesGender && matchesGenre && matchesSecondGenre;
+  });
+
+  console.log(`Filtered to ${filteredProducts.length} products`);
   displayProducts(filteredProducts);
-  addProductCountIndicator(filteredProducts.length);
 }
 
 // Add product count indicator
@@ -276,190 +549,6 @@ function addProductCountIndicator(count) {
   countIndicator.textContent = `Showing ${startIndex}-${endIndex} of ${count} products`
 }
 
-// Populate category filter based on product type
-function populateCategories(products) {
-  // Clear existing options except "All Categories"
-  while (categoryFilter.options.length > 1) {
-    categoryFilter.remove(1);
-  }
-
-  if (activeCategory === "jackets") {
-    // Extract unique tags from jacket products
-    const allTags = products.flatMap(product => product.tags || []);
-    const uniqueTags = [...new Set(allTags)].filter(tag => 
-      tag !== "mens" && tag !== "womens" && tag !== "unisex"
-    );
-    
-    console.log("Available jacket categories:", uniqueTags);
-    
-    // Add each unique tag as an option
-    uniqueTags.forEach((tag) => {
-      const option = document.createElement("option");
-      option.value = tag;
-      option.textContent = tag.charAt(0).toUpperCase() + tag.slice(1);
-      categoryFilter.appendChild(option);
-    });
-    
-    // Show gender filter for jackets
-    document.querySelector(".gender-filter").style.display = "block";
-  } 
-  else if (activeCategory === "movies" || activeCategory === "games") {
-    // Extract unique genres from movies or games
-    const uniqueGenres = [...new Set(products.map(item => item.genre).filter(Boolean))];
-    
-    console.log(`Available ${activeCategory} genres:`, uniqueGenres);
-    
-    // Add each unique genre as an option
-    uniqueGenres.forEach((genre) => {
-      const option = document.createElement("option");
-      option.value = genre.toLowerCase();
-      option.textContent = genre;
-      categoryFilter.appendChild(option);
-    });
-    
-    // Hide gender filter for movies and games
-    document.querySelector(".gender-filter").style.display = "none";
-  }
-}
-
-// Populate genre filter based on products data
-function populateGenreFilter(products) {
-  // Clear existing options except "All Genres"
-  while (genreFilter.options.length > 1) {
-    genreFilter.remove(1);
-  }
-
-  // Look for words related to genres in titles, descriptions, and tags
-  const genreKeywords = new Set()
-  
-  products.forEach(product => {
-    // Look for common genre keywords in title and description
-    const text = (product.title + " " + product.description).toLowerCase()
-    
-    // Add common keywords we find
-    const keywords = ["casual", "sports", "hiking", "outdoor", "winter", "rain", "mountain"]
-    keywords.forEach(keyword => {
-      if (text.includes(keyword)) {
-        genreKeywords.add(keyword)
-      }
-    })
-    
-    // Also check tags for potential genres
-    if (product.tags) {
-      product.tags.forEach(tag => {
-        if (!["jacket", "womens", "mens", "unisex"].includes(tag.toLowerCase())) {
-          genreKeywords.add(tag.toLowerCase())
-        }
-      })
-    }
-  })
-  
-  console.log("Detected genre keywords:", [...genreKeywords])
-  
-  // Add each detected genre as an option
-  const sortedGenres = [...genreKeywords].sort()
-  sortedGenres.forEach(genre => {
-    const option = document.createElement("option")
-    option.value = genre
-    option.textContent = genre.charAt(0).toUpperCase() + genre.slice(1)
-    genreFilter.appendChild(option)
-  })
-}
-
-// Filter products based on search, category, gender, and genre
-function filterProducts() {
-  const searchTerm = searchInput.value.toLowerCase();
-  const category = categoryFilter.value.toLowerCase();
-  const gender = genderFilter.value;
-  const genre = genreFilter.value.toLowerCase();
-
-  console.log(`Filtering ${activeCategory} with:`, {
-    searchTerm,
-    category,
-    gender,
-    genre
-  });
-
-  // Reset to first page when applying new filters
-  currentDisplayPage = 1;
-
-  // Get the current product set based on active category
-  let currentProducts = [];
-  if (activeCategory === "jackets") {
-    currentProducts = products;
-  } else if (activeCategory === "movies") {
-    currentProducts = movies;
-  } else if (activeCategory === "games") {
-    currentProducts = games;
-  }
-
-  // If all filters are at their default values, show all products in the category
-  if (searchTerm === "" && category === "all" && gender === "all" && genre === "all") {
-    filteredProducts = [...currentProducts];
-    console.log(`All filters at default - showing all ${activeCategory}:`, filteredProducts.length);
-    displayProducts(filteredProducts);
-    return;
-  }
-
-  filteredProducts = currentProducts.filter((product) => {
-    // Match search term in title or description
-    const matchesSearch =
-      searchTerm === "" ||
-      product.title.toLowerCase().includes(searchTerm) || 
-      (product.description && product.description.toLowerCase().includes(searchTerm));
-    
-    // Match category - handle different product types
-    let matchesCategory = category === "all";
-    if (!matchesCategory) {
-      if (activeCategory === "jackets" && product.tags) {
-        matchesCategory = product.tags.some(tag => tag.toLowerCase() === category);
-      } else if (activeCategory === "movies" || activeCategory === "games") {
-        matchesCategory = product.genre && product.genre.toLowerCase() === category;
-      }
-    }
-    
-    // Match gender - only applies to jackets
-    const matchesGender = 
-      gender === "all" || 
-      activeCategory !== "jackets" || // Always match if not jackets
-      (gender === "men" && product.gender === "Male") ||
-      (gender === "women" && product.gender === "Female") ||
-      (gender === "unisex" && product.gender === "Unisex");
-    
-    // Match genre - different handling for different product types
-    let matchesGenre = genre === "all";
-    
-    if (!matchesGenre) {
-      if (activeCategory === "jackets") {
-        // For jackets, check title, description, tags
-        const titleMatch = product.title.toLowerCase().includes(genre);
-        const descMatch = product.description && product.description.toLowerCase().includes(genre);
-        const tagMatch = product.tags && product.tags.some(tag => 
-          tag.toLowerCase().includes(genre) || genre.includes(tag.toLowerCase())
-        );
-        matchesGenre = titleMatch || descMatch || tagMatch;
-      } else if (activeCategory === "movies" || activeCategory === "games") {
-        // For movies and games, check genre, title, description
-        const genreMatch = product.genre && product.genre.toLowerCase().includes(genre);
-        const titleMatch = product.title.toLowerCase().includes(genre);
-        const descMatch = product.description && product.description.toLowerCase().includes(genre);
-        matchesGenre = genreMatch || titleMatch || descMatch;
-      }
-    }
-
-    return matchesSearch && matchesCategory && matchesGender && matchesGenre;
-  });
-
-  console.log(`Filtered to ${filteredProducts.length} ${activeCategory}`);
-  displayProducts(filteredProducts);
-}
-
-// Search input event listener with special handling for empty search
-searchInput.addEventListener("input", (event) => {
-  console.log("Search input changed:", event.target.value)
-  filterProducts()
-})
-
 // Reset all filters and show all products
 function resetFilters() {
   searchInput.value = ""
@@ -467,11 +556,19 @@ function resetFilters() {
   genderFilter.value = "all"
   genreFilter.value = "all"
   
+  // Reset second genre filter if it exists
+  const secondGenreFilter = document.getElementById("secondGenreFilter");
+  if (secondGenreFilter) {
+    secondGenreFilter.value = "all";
+  }
+  
   // Reset to first page when filters are reset
   currentDisplayPage = 1
   
-  filteredProducts = [...products]
-  displayProducts(filteredProducts)
+  // Show all products
+  filteredProducts = [...allProducts];
+  updateSecondaryFilters("all");
+  displayProducts(filteredProducts);
 }
 
 // Add a reset filters button
@@ -551,14 +648,14 @@ genreFilter.addEventListener("change", () => {
 
 // Display products in the grid with pagination
 function displayProducts(products) {
-  console.log(`Displaying ${products.length} ${activeCategory}`);
+  console.log(`Displaying ${products.length} products`);
   
   // Update the product count indicator
   const countIndicator = document.getElementById("productCountIndicator");
   if (countIndicator) {
     const startIndex = (currentDisplayPage - 1) * productsPerPage + 1;
     const endIndex = Math.min(startIndex + productsPerPage - 1, products.length);
-    countIndicator.textContent = `Showing ${startIndex}-${endIndex} of ${products.length} ${activeCategory}`;
+    countIndicator.textContent = `Showing ${startIndex}-${endIndex} of ${products.length} products`;
   }
   
   if (!products || products.length === 0) {
@@ -587,96 +684,101 @@ function displayProducts(products) {
   productsGrid.className = "products-grid";
   
   try {
-    if (activeCategory === "jackets") {
-      // Jacket display (existing code)
-      productsGrid.innerHTML = productsToShow
-        .map(
-          (product) => `
-        <div class="product-card" data-id="${product.id}">
-          <div class="product-image-container">
-            <img src="${product.image.url}" alt="${product.image.alt}" class="product-image">
-            <img src="${product.image.url}" alt="${product.image.alt}" class="environment-img">
-            <div class="product-attributes">
-              ${product.sizes ? product.sizes.map(size => `<span>${size}</span>`).join('') : ''}
+    // Generate HTML for each product based on its type
+    productsGrid.innerHTML = productsToShow
+      .map(product => {
+        if (product.productCategory === "jackets") {
+          // Jacket display
+          return `
+          <div class="product-card" data-id="${product.id}" data-category="jackets">
+            <div class="product-image-container">
+              <img src="${product.image.url}" alt="${product.image.alt}" class="product-image">
+              <img src="${product.image.url}" alt="${product.image.alt}" class="environment-img">
+              <div class="product-attributes">
+                ${product.sizes ? product.sizes.map(size => `<span>${size}</span>`).join('') : ''}
+              </div>
+            </div>
+            <div class="product-info">
+              <div class="product-category">Jacket · ${product.gender} · ${product.baseColor}</div>
+              <h3 class="product-title">${product.title}</h3>
+              <p class="product-price">
+                ${product.onSale 
+                  ? `<span class="original-price">$${product.price.toFixed(2)}</span> $${product.discountedPrice.toFixed(2)}` 
+                  : `$${product.price.toFixed(2)}`}
+              </p>
+              <button class="add-to-cart" onclick="addToCart('${product.id}', 'jackets')">
+                Add to Cart
+              </button>
             </div>
           </div>
-          <div class="product-info">
-            <div class="product-category">${product.gender} · ${product.baseColor}</div>
-            <h3 class="product-title">${product.title}</h3>
-            <p class="product-price">
-              ${product.onSale 
-                ? `<span class="original-price">$${product.price.toFixed(2)}</span> $${product.discountedPrice.toFixed(2)}` 
-                : `$${product.price.toFixed(2)}`}
-            </p>
-            <button class="add-to-cart" onclick="addToCart('${product.id}', 'jackets')">
-              Add to Cart
-            </button>
-          </div>
-        </div>
-      `,
-        )
-        .join("");
-    } else if (activeCategory === "movies") {
-      // Movie display
-      productsGrid.innerHTML = productsToShow
-        .map(
-          (movie) => `
-        <div class="product-card" data-id="${movie.id}">
-          <div class="product-image-container">
-            <img src="${movie.image.url}" alt="${movie.image.alt}" class="product-image">
-            <img src="${movie.image.url}" alt="${movie.image.alt}" class="environment-img">
-            <div class="product-attributes">
-              <span>${movie.genre}</span>
-              <span>${movie.released}</span>
-              <span>${movie.rating}</span>
+        `;
+        } else if (product.productCategory === "movies") {
+          // Movie display with improved rating display
+          let ratingDisplay = 'No rating';
+          
+          if (product.rating) {
+            const parsedRating = parseFloat(product.rating);
+            if (!isNaN(parsedRating)) {
+              // Show rating with one decimal place if it's a number
+              ratingDisplay = `Rating: ${parsedRating.toFixed(1)}`;
+            } else {
+              ratingDisplay = `Rating: ${product.rating}`;
+            }
+          }
+          
+          return `
+          <div class="product-card" data-id="${product.id}" data-category="movies">
+            <div class="product-image-container">
+              <img src="${product.image.url}" alt="${product.image.alt}" class="product-image">
+              <img src="${product.image.url}" alt="${product.image.alt}" class="environment-img">
+              <div class="product-attributes">
+                <span>${product.genre || 'No genre'}</span>
+                <span>${product.released || 'Unknown'}</span>
+                <span>${ratingDisplay}</span>
+              </div>
+            </div>
+            <div class="product-info">
+              <div class="product-category">Movie · ${product.genre || 'Unknown genre'}</div>
+              <h3 class="product-title">${product.title}</h3>
+              <p class="product-price">$${product.price.toFixed(2)}</p>
+              <button class="add-to-cart" onclick="addToCart('${product.id}', 'movies')">
+                Add to Cart
+              </button>
             </div>
           </div>
-          <div class="product-info">
-            <div class="product-category">Movie · ${movie.genre}</div>
-            <h3 class="product-title">${movie.title}</h3>
-            <p class="product-price">$${movie.price.toFixed(2)}</p>
-            <button class="add-to-cart" onclick="addToCart('${movie.id}', 'movies')">
-              Add to Cart
-            </button>
-          </div>
-        </div>
-      `,
-        )
-        .join("");
-    } else if (activeCategory === "games") {
-      // Game display
-      productsGrid.innerHTML = productsToShow
-        .map(
-          (game) => `
-        <div class="product-card" data-id="${game.id}">
-          <div class="product-image-container">
-            <img src="${game.image.url}" alt="${game.image.alt}" class="product-image">
-            <img src="${game.image.url}" alt="${game.image.alt}" class="environment-img">
-            <div class="product-attributes">
-              <span>${game.genre}</span>
-              <span>${game.released}</span>
-              <span>${game.ageRating || 'All ages'}</span>
+        `;
+        } else if (product.productCategory === "games") {
+          // Game display - Fixed: changed 'game' to 'product'
+          return `
+          <div class="product-card" data-id="${product.id}" data-category="games">
+            <div class="product-image-container">
+              <img src="${product.image.url}" alt="${product.image.alt}" class="product-image">
+              <img src="${product.image.url}" alt="${product.image.alt}" class="environment-img">
+              <div class="product-attributes">
+                <span>${product.genre || 'No genre'}</span>
+                <span>${product.released || 'Unknown'}</span>
+                <span>${product.ageRating || 'All ages'}</span>
+              </div>
+            </div>
+            <div class="product-info">
+              <div class="product-category">Game · ${product.genre || 'Unknown genre'}</div>
+              <h3 class="product-title">${product.title}</h3>
+              <p class="product-price">$${product.price.toFixed(2)}</p>
+              <button class="add-to-cart" onclick="addToCart('${product.id}', 'games')">
+                Add to Cart
+              </button>
             </div>
           </div>
-          <div class="product-info">
-            <div class="product-category">Game · ${game.genre}</div>
-            <h3 class="product-title">${game.title}</h3>
-            <p class="product-price">$${game.price.toFixed(2)}</p>
-            <button class="add-to-cart" onclick="addToCart('${game.id}', 'games')">
-              Add to Cart
-            </button>
-          </div>
-        </div>
-      `,
-        )
-        .join("");
-    }
+        `;
+        }
+      })
+      .join("");
       
     // Create or update pagination controls
     createPaginationControls(products.length, totalPages);
     
   } catch (error) {
-    console.error(`Error displaying ${activeCategory}:`, error);
+    console.error(`Error displaying products:`, error);
     console.error("Error details:", error);
     if (products.length > 0) {
       console.error("First product object:", products[0]);
@@ -968,4 +1070,40 @@ document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
 
 // Initialize the page
 fetchAllProducts();
+
+// Add a helper function for populating jacket genres
+function populateJacketGenres(jacketProducts) {
+  const genreKeywords = new Set();
+    
+  jacketProducts.forEach(product => {
+    // Look for common genre keywords in title and description
+    const text = (product.title + " " + (product.description || "")).toLowerCase();
+    
+    // Add common keywords we find
+    const keywords = ["casual", "sports", "hiking", "outdoor", "winter", "rain", "mountain"];
+    keywords.forEach(keyword => {
+      if (text.includes(keyword)) {
+        genreKeywords.add(keyword);
+      }
+    });
+    
+    // Also check tags for potential genres
+    if (product.tags) {
+      product.tags.forEach(tag => {
+        if (!["jacket", "womens", "mens", "unisex"].includes(tag.toLowerCase())) {
+          genreKeywords.add(tag.toLowerCase());
+        }
+      });
+    }
+  });
+  
+  // Add each detected genre as an option
+  const sortedGenres = [...genreKeywords].sort();
+  sortedGenres.forEach(genre => {
+    const option = document.createElement("option");
+    option.value = genre;
+    option.textContent = genre.charAt(0).toUpperCase() + genre.slice(1);
+    genreFilter.appendChild(option);
+  });
+}
 
