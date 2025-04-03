@@ -84,7 +84,7 @@ async function fetchProducts() {
     }
     
     const responseData = await response.json()
-    console.log("API Response:", responseData)
+    console.log("API Response structure:", Object.keys(responseData))
     
     // Extract products from the API response (data property contains the products)
     products = responseData.data || []
@@ -96,12 +96,32 @@ async function fetchProducts() {
     }
     
     console.log(`Loaded ${products.length} products`)
+    if (products.length > 0) {
+      console.log("Sample product data structure:", Object.keys(products[0]))
+      console.log("Sample product:", products[0])
+      
+      // Verify that required properties exist
+      const requiredProps = ["id", "title", "description", "gender", "sizes", "baseColor", 
+                          "price", "discountedPrice", "onSale", "image", "tags", "favorite"]
+      
+      const missingProps = requiredProps.filter(prop => !(prop in products[0]))
+      if (missingProps.length > 0) {
+        console.warn("Missing properties in product data:", missingProps)
+      }
+    }
+    
     filteredProducts = [...products]
 
     // Populate category filter based on unique tags
     populateCategories(products)
-
-    // Display products
+    
+    // Populate genre filter based on product data
+    populateGenreFilter(products)
+    
+    // Add reset filters button
+    addResetFiltersButton()
+    
+    // Display all products
     displayProducts(products)
   } catch (error) {
     console.error("Error fetching products:", error)
@@ -120,14 +140,64 @@ function populateCategories(products) {
 
   // Extract unique tags from all products
   const allTags = products.flatMap(product => product.tags || [])
-  const uniqueTags = [...new Set(allTags)]
+  // Filter out non-clothing categories if needed (like "womens", "mens" that might overlap with gender)
+  const uniqueTags = [...new Set(allTags)].filter(tag => 
+    tag !== "mens" && tag !== "womens" && tag !== "unisex"
+  )
+
+  console.log("Available category tags:", uniqueTags)
 
   // Add each unique tag as an option
   uniqueTags.forEach((tag) => {
     const option = document.createElement("option")
     option.value = tag
+    // Format tag name for display (capitalize first letter)
     option.textContent = tag.charAt(0).toUpperCase() + tag.slice(1)
     categoryFilter.appendChild(option)
+  })
+}
+
+// Populate genre filter based on products data
+function populateGenreFilter(products) {
+  // Clear existing options except "All Genres"
+  while (genreFilter.options.length > 1) {
+    genreFilter.remove(1);
+  }
+
+  // Look for words related to genres in titles, descriptions, and tags
+  const genreKeywords = new Set()
+  
+  products.forEach(product => {
+    // Look for common genre keywords in title and description
+    const text = (product.title + " " + product.description).toLowerCase()
+    
+    // Add common keywords we find
+    const keywords = ["casual", "sports", "hiking", "outdoor", "winter", "rain", "mountain"]
+    keywords.forEach(keyword => {
+      if (text.includes(keyword)) {
+        genreKeywords.add(keyword)
+      }
+    })
+    
+    // Also check tags for potential genres
+    if (product.tags) {
+      product.tags.forEach(tag => {
+        if (!["jacket", "womens", "mens", "unisex"].includes(tag.toLowerCase())) {
+          genreKeywords.add(tag.toLowerCase())
+        }
+      })
+    }
+  })
+  
+  console.log("Detected genre keywords:", [...genreKeywords])
+  
+  // Add each detected genre as an option
+  const sortedGenres = [...genreKeywords].sort()
+  sortedGenres.forEach(genre => {
+    const option = document.createElement("option")
+    option.value = genre
+    option.textContent = genre.charAt(0).toUpperCase() + genre.slice(1)
+    genreFilter.appendChild(option)
   })
 }
 
@@ -136,7 +206,7 @@ function filterProducts() {
   const searchTerm = searchInput.value.toLowerCase()
   const category = categoryFilter.value.toLowerCase()
   const gender = genderFilter.value
-  const genre = genreFilter.value
+  const genre = genreFilter.value.toLowerCase() // Make sure it's lowercase for comparison
 
   console.log("Filtering products with:", {
     searchTerm,
@@ -146,16 +216,27 @@ function filterProducts() {
     totalProducts: products.length
   })
 
+  // If all filters are at their default values, show all products
+  if (searchTerm === "" && category === "all" && gender === "all" && genre === "all") {
+    filteredProducts = [...products]
+    console.log("All filters at default - showing all products:", filteredProducts.length)
+    displayProducts(filteredProducts)
+    return
+  }
+
   filteredProducts = products.filter((product) => {
     // Match search term in title or description
     const matchesSearch =
+      searchTerm === "" || // Empty search matches everything
       product.title.toLowerCase().includes(searchTerm) || 
       (product.description && product.description.toLowerCase().includes(searchTerm))
     
     // Match category (tag)
-    const matchesCategory = 
-      category === "all" || 
-      (product.tags && product.tags.some(tag => tag.toLowerCase() === category))
+    let matchesCategory = category === "all"
+    
+    if (!matchesCategory && product.tags) {
+      matchesCategory = product.tags.some(tag => tag.toLowerCase() === category)
+    }
     
     // Match gender (exact match from API)
     const matchesGender = 
@@ -164,12 +245,28 @@ function filterProducts() {
       (gender === "women" && product.gender === "Female") ||
       (gender === "unisex" && product.gender === "Unisex")
     
-    // Match genre in title or description or tags
-    const matchesGenre = 
-      genre === "all" || 
-      product.title.toLowerCase().includes(genre.toLowerCase()) || 
-      (product.description && product.description.toLowerCase().includes(genre.toLowerCase())) ||
-      (product.tags && product.tags.some(tag => tag.toLowerCase().includes(genre.toLowerCase())))
+    // Match genre in title, description or tags (improved to be more flexible)
+    let matchesGenre = genre === "all" 
+    
+    if (!matchesGenre) {
+      // Check in title
+      const titleMatch = product.title.toLowerCase().includes(genre)
+      
+      // Check in description
+      const descMatch = product.description && product.description.toLowerCase().includes(genre)
+      
+      // Check in tags - look for partial matches within tags
+      const tagMatch = product.tags && product.tags.some(tag => 
+        tag.toLowerCase().includes(genre) || genre.includes(tag.toLowerCase())
+      )
+      
+      matchesGenre = titleMatch || descMatch || tagMatch
+    }
+
+    // Debug filter matches when filters are active
+    if (searchTerm !== "" || category !== "all" || gender !== "all" || genre !== "all") {
+      console.log(`Product ${product.title}: Search: ${matchesSearch}, Category: ${matchesCategory}, Gender: ${matchesGender}, Genre: ${matchesGenre}`)
+    }
 
     return matchesSearch && matchesCategory && matchesGender && matchesGenre
   })
@@ -178,17 +275,80 @@ function filterProducts() {
   displayProducts(filteredProducts)
 }
 
-// Search input event listener
-searchInput.addEventListener("input", filterProducts)
+// Search input event listener with special handling for empty search
+searchInput.addEventListener("input", (event) => {
+  console.log("Search input changed:", event.target.value)
+  filterProducts()
+})
+
+// Reset all filters and show all products
+function resetFilters() {
+  searchInput.value = ""
+  categoryFilter.value = "all"
+  genderFilter.value = "all"
+  genreFilter.value = "all"
+  
+  filteredProducts = [...products]
+  displayProducts(filteredProducts)
+}
+
+// Add a reset filters button
+function addResetFiltersButton() {
+  const filtersContainer = document.querySelector(".filters")
+  
+  // Check if button already exists
+  if (!document.getElementById("resetFiltersBtn")) {
+    const resetButton = document.createElement("button")
+    resetButton.id = "resetFiltersBtn"
+    resetButton.className = "reset-filters-btn"
+    resetButton.textContent = "Reset Filters"
+    resetButton.addEventListener("click", resetFilters)
+    
+    filtersContainer.appendChild(resetButton)
+    
+    // Add style for the reset button
+    const style = document.createElement("style")
+    style.textContent = `
+      .reset-filters-btn {
+        padding: 0.75rem 1rem;
+        background-color: var(--text-light);
+        color: white;
+        border: none;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: var(--transition);
+      }
+      .reset-filters-btn:hover {
+        background-color: var(--primary-color);
+      }
+    `
+    document.head.appendChild(style)
+  }
+}
 
 // Category filter event listener
-categoryFilter.addEventListener("change", filterProducts)
+categoryFilter.addEventListener("change", () => {
+  console.log("Category changed to:", categoryFilter.value)
+  filterProducts()
+})
 
 // Gender filter event listener
-genderFilter.addEventListener("change", filterProducts)
+genderFilter.addEventListener("change", () => {
+  console.log("Gender changed to:", genderFilter.value)
+  filterProducts()
+})
 
 // Genre filter event listener
-genreFilter.addEventListener("change", filterProducts)
+genreFilter.addEventListener("change", () => {
+  console.log("Genre changed to:", genreFilter.value)
+  
+  // If changing back to "all", make sure we update the filtered products
+  if (genreFilter.value === "all") {
+    console.log("Genre reset to All Genres, recalculating filters")
+  }
+  
+  filterProducts()
+})
 
 // Display products in the grid
 function displayProducts(products) {
