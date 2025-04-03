@@ -302,7 +302,20 @@ function addResetFiltersButton() {
     resetButton.id = "resetFiltersBtn"
     resetButton.className = "reset-filters-btn"
     resetButton.textContent = "Reset Filters"
-    resetButton.addEventListener("click", resetFilters)
+    
+    // Add click event with animation feedback
+    resetButton.addEventListener("click", (e) => {
+      // Visual feedback - change color temporarily
+      e.target.style.backgroundColor = "var(--primary-hover)"  // Gray color on click
+      
+      // Reset all filters
+      resetFilters()
+      
+      // Return to original color after a short delay
+      setTimeout(() => {
+        e.target.style.backgroundColor = "var(--primary-color)"  // Back to black
+      }, 300)
+    })
     
     filtersContainer.appendChild(resetButton)
     
@@ -311,15 +324,19 @@ function addResetFiltersButton() {
     style.textContent = `
       .reset-filters-btn {
         padding: 0.75rem 1rem;
-        background-color: var(--text-light);
+        background-color: var(--primary-color);  /* Black - matches Add to Cart */
         color: white;
         border: none;
         border-radius: var(--radius-md);
         cursor: pointer;
         transition: var(--transition);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 0.8rem;
+        font-weight: 500;
       }
       .reset-filters-btn:hover {
-        background-color: var(--primary-color);
+        background-color: var(--primary-hover);  /* Gray on hover */
       }
     `
     document.head.appendChild(style)
