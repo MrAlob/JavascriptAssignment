@@ -15,6 +15,19 @@ const closeCartBtn = document.querySelector(".close-cart")
 const cartBtn = document.querySelector(".cart-btn")
 const genderFilter = document.getElementById("genderFilter")
 const genreFilter = document.getElementById("genreFilter")
+const mainImage = document.querySelector('.main-image');
+const thumbnailContainer = document.querySelector('.thumbnail-images');
+const productTitle = document.querySelector('.product-title');
+const productCategory = document.querySelector('.product-category');
+const productIdElement = document.querySelector('.product-id');
+const currentPrice = document.querySelector('.current-price');
+const originalPrice = document.querySelector('.original-price');
+const discountBadge = document.querySelector('.discount-badge');
+const productDescription = document.querySelector('.product-description');
+const productAttributes = document.querySelector('.product-attributes');
+const addToCartBtn = document.querySelector('.add-to-cart-btn');
+const quantityInput = document.querySelector('.quantity-input');
+const relatedProductsGrid = document.querySelector('.related-products .products-grid');
 
 // State
 let cart = []
@@ -23,6 +36,8 @@ let filteredProducts = []
 let movies = []
 let games = []
 let allProducts = [] // New variable to store all products from all categories
+let product = null;
+let relatedProducts = [];
 
 // Add new state variables for pagination
 let currentDisplayPage = 1;
@@ -688,88 +703,76 @@ function displayProducts(products) {
     productsGrid.innerHTML = productsToShow
       .map(product => {
         if (product.productCategory === "jackets") {
-          // Jacket display
           return `
-          <div class="product-card" data-id="${product.id}" data-category="jackets">
-            <div class="product-image-container">
-              <img src="${product.image.url}" alt="${product.image.alt}" class="product-image">
-              <img src="${product.image.url}" alt="${product.image.alt}" class="environment-img">
-              <div class="product-attributes">
-                ${product.sizes ? product.sizes.map(size => `<span>${size}</span>`).join('') : ''}
-              </div>
-            </div>
-            <div class="product-info">
-              <div class="product-category">Jacket · ${product.gender} · ${product.baseColor}</div>
-              <h3 class="product-title">${product.title}</h3>
-              <p class="product-price">
-                ${product.onSale 
-                  ? `<span class="original-price">$${product.price.toFixed(2)}</span> $${product.discountedPrice.toFixed(2)}` 
-                  : `$${product.price.toFixed(2)}`}
-              </p>
+            <div class="product-card" data-id="${product.id}" data-category="jackets">
+              <a href="product/index.html?id=${product.id}&type=jackets" class="product-link">
+                <div class="product-image-container">
+                  <img src="${product.image.url}" alt="${product.image.alt}" class="product-image">
+                  <img src="${product.image.url}" alt="${product.image.alt}" class="environment-img">
+                </div>
+                <div class="product-info">
+                  <div class="product-category">Jacket · ${product.gender} · ${product.baseColor}</div>
+                  <h3 class="product-title">${product.title}</h3>
+                  <p class="product-price">
+                    ${product.onSale 
+                      ? `<span class="original-price">$${product.price.toFixed(2)}</span> $${product.discountedPrice.toFixed(2)}` 
+                      : `$${product.price.toFixed(2)}`}
+                  </p>
+                </div>
+              </a>
               <button class="add-to-cart" onclick="addToCart('${product.id}', 'jackets')">
                 Add to Cart
               </button>
             </div>
-          </div>
-        `;
+          `;
         } else if (product.productCategory === "movies") {
-          // Movie display with improved rating display
-          let ratingDisplay = 'No rating';
-          
-          if (product.rating) {
-            const parsedRating = parseFloat(product.rating);
-            if (!isNaN(parsedRating)) {
-              // Show rating with one decimal place if it's a number
-              ratingDisplay = `Rating: ${parsedRating.toFixed(1)}`;
-            } else {
-              ratingDisplay = `Rating: ${product.rating}`;
-            }
-          }
-          
           return `
-          <div class="product-card" data-id="${product.id}" data-category="movies">
-            <div class="product-image-container">
-              <img src="${product.image.url}" alt="${product.image.alt}" class="product-image">
-              <img src="${product.image.url}" alt="${product.image.alt}" class="environment-img">
-              <div class="product-attributes">
-                <span>${product.genre || 'No genre'}</span>
-                <span>${product.released || 'Unknown'}</span>
-                <span>${ratingDisplay}</span>
-              </div>
-            </div>
-            <div class="product-info">
-              <div class="product-category">Movie · ${product.genre || 'Unknown genre'}</div>
-              <h3 class="product-title">${product.title}</h3>
-              <p class="product-price">$${product.price.toFixed(2)}</p>
+            <div class="product-card" data-id="${product.id}" data-category="movies">
+              <a href="product/index.html?id=${product.id}&type=movies" class="product-link">
+                <div class="product-image-container">
+                  <img src="${product.image.url}" alt="${product.image.alt}" class="product-image">
+                  <img src="${product.image.url}" alt="${product.image.alt}" class="environment-img">
+                  <div class="product-attributes">
+                    <span>${product.genre || 'No genre'}</span>
+                    <span>${product.released || 'Unknown'}</span>
+                    <span>${product.rating ? `Rating: ${product.rating}` : 'No rating'}</span>
+                  </div>
+                </div>
+                <div class="product-info">
+                  <div class="product-category">Movie · ${product.genre || 'Unknown genre'}</div>
+                  <h3 class="product-title">${product.title}</h3>
+                  <p class="product-price">$${product.price.toFixed(2)}</p>
+                </div>
+              </a>
               <button class="add-to-cart" onclick="addToCart('${product.id}', 'movies')">
                 Add to Cart
               </button>
             </div>
-          </div>
-        `;
+          `;
         } else if (product.productCategory === "games") {
-          // Game display - Fixed: changed 'game' to 'product'
           return `
-          <div class="product-card" data-id="${product.id}" data-category="games">
-            <div class="product-image-container">
-              <img src="${product.image.url}" alt="${product.image.alt}" class="product-image">
-              <img src="${product.image.url}" alt="${product.image.alt}" class="environment-img">
-              <div class="product-attributes">
-                <span>${product.genre || 'No genre'}</span>
-                <span>${product.released || 'Unknown'}</span>
-                <span>${product.ageRating || 'All ages'}</span>
-              </div>
-            </div>
-            <div class="product-info">
-              <div class="product-category">Game · ${product.genre || 'Unknown genre'}</div>
-              <h3 class="product-title">${product.title}</h3>
-              <p class="product-price">$${product.price.toFixed(2)}</p>
+            <div class="product-card" data-id="${product.id}" data-category="games">
+              <a href="product/index.html?id=${product.id}&type=games" class="product-link">
+                <div class="product-image-container">
+                  <img src="${product.image.url}" alt="${product.image.alt}" class="product-image">
+                  <img src="${product.image.url}" alt="${product.image.alt}" class="environment-img">
+                  <div class="product-attributes">
+                    <span>${product.genre || 'No genre'}</span>
+                    <span>${product.released || 'Unknown'}</span>
+                    <span>${product.ageRating || 'All ages'}</span>
+                  </div>
+                </div>
+                <div class="product-info">
+                  <div class="product-category">Game · ${product.genre || 'Unknown genre'}</div>
+                  <h3 class="product-title">${product.title}</h3>
+                  <p class="product-price">$${product.price.toFixed(2)}</p>
+                </div>
+              </a>
               <button class="add-to-cart" onclick="addToCart('${product.id}', 'games')">
                 Add to Cart
               </button>
             </div>
-          </div>
-        `;
+          `;
         }
       })
       .join("");
@@ -1105,5 +1108,233 @@ function populateJacketGenres(jacketProducts) {
     option.textContent = genre.charAt(0).toUpperCase() + genre.slice(1);
     genreFilter.appendChild(option);
   });
+}
+
+// Get product ID from URL parameters
+const urlParams = new URLSearchParams(window.location.search);
+const productId = urlParams.get('id');
+const productType = urlParams.get('type');
+
+// Fetch product details
+async function fetchProductDetails() {
+    try {
+        const apiEndpoint = getApiEndpoint(productType);
+        const response = await fetch(apiEndpoint);
+        
+        if (!response.ok) {
+            throw new Error(`API responded with status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        product = data.data.find(item => item.id === productId);
+        
+        if (!product) {
+            throw new Error('Product not found');
+        }
+        
+        // Fetch related products
+        relatedProducts = data.data
+            .filter(item => item.id !== productId)
+            .slice(0, 4);
+        
+        displayProductDetails();
+        displayRelatedProducts();
+        
+    } catch (error) {
+        console.error('Error fetching product details:', error);
+        displayError();
+    }
+}
+
+// Get API endpoint based on product type
+function getApiEndpoint(type) {
+    switch (type) {
+        case 'jackets':
+            return 'https://v2.api.noroff.dev/rainy-days';
+        case 'movies':
+            return 'https://v2.api.noroff.dev/square-eyes';
+        case 'games':
+            return 'https://v2.api.noroff.dev/gamehub';
+        default:
+            throw new Error('Invalid product type');
+    }
+}
+
+// Display product details
+function displayProductDetails() {
+    // Update breadcrumb and title
+    document.querySelectorAll('.product-title').forEach(el => {
+        el.textContent = product.title;
+    });
+    document.querySelector('.product-category').textContent = 
+        productType.charAt(0).toUpperCase() + productType.slice(1);
+    
+    // Update main image and thumbnails
+    mainImage.innerHTML = `
+        <img src="${product.image.url}" alt="${product.image.alt}">
+    `;
+    
+    // Add multiple images if available
+    if (product.images && product.images.length > 0) {
+        thumbnailContainer.innerHTML = product.images
+            .map((img, index) => `
+                <img src="${img.url}" alt="${img.alt}" 
+                    onclick="updateMainImage('${img.url}', '${img.alt}')"
+                    class="${index === 0 ? 'active' : ''}">
+            `).join('');
+    }
+    
+    // Update price information
+    if (product.onSale) {
+        currentPrice.textContent = `$${product.discountedPrice.toFixed(2)}`;
+        originalPrice.textContent = `$${product.price.toFixed(2)}`;
+        discountBadge.textContent = 'Sale';
+    } else {
+        currentPrice.textContent = `$${product.price.toFixed(2)}`;
+        originalPrice.textContent = '';
+        discountBadge.textContent = '';
+    }
+    
+    // Update description
+    productDescription.innerHTML = `<p>${product.description}</p>`;
+    
+    // Update attributes based on product type
+    displayProductAttributes();
+    
+    // Set product ID for add to cart button
+    addToCartBtn.dataset.productId = product.id;
+    addToCartBtn.dataset.productType = productType;
+}
+
+// Display product attributes based on type
+function displayProductAttributes() {
+    let attributesHTML = '';
+    
+    switch (productType) {
+        case 'jackets':
+            attributesHTML = `
+                <div class="attribute">
+                    <span class="label">Gender:</span>
+                    <span class="value">${product.gender}</span>
+                </div>
+                <div class="attribute">
+                    <span class="label">Color:</span>
+                    <span class="value">${product.baseColor}</span>
+                </div>
+                <div class="attribute">
+                    <span class="label">Available Sizes:</span>
+                    <div class="sizes">
+                        ${product.sizes.map(size => `
+                            <span class="size">${size}</span>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            break;
+            
+        case 'movies':
+            attributesHTML = `
+                <div class="attribute">
+                    <span class="label">Genre:</span>
+                    <span class="value">${product.genre}</span>
+                </div>
+                <div class="attribute">
+                    <span class="label">Rating:</span>
+                    <span class="value">${product.rating}</span>
+                </div>
+                <div class="attribute">
+                    <span class="label">Released:</span>
+                    <span class="value">${product.released}</span>
+                </div>
+            `;
+            break;
+            
+        case 'games':
+            attributesHTML = `
+                <div class="attribute">
+                    <span class="label">Genre:</span>
+                    <span class="value">${product.genre}</span>
+                </div>
+                <div class="attribute">
+                    <span class="label">Age Rating:</span>
+                    <span class="value">${product.ageRating}</span>
+                </div>
+                <div class="attribute">
+                    <span class="label">Released:</span>
+                    <span class="value">${product.released}</span>
+                </div>
+            `;
+            break;
+    }
+    
+    productAttributes.innerHTML = attributesHTML;
+}
+
+// Display related products
+function displayRelatedProducts() {
+    relatedProductsGrid.innerHTML = relatedProducts
+        .map(product => `
+            <div class="product-card">
+                <div class="product-image-container">
+                    <img src="${product.image.url}" alt="${product.image.alt}" class="product-image">
+                </div>
+                <div class="product-info">
+                    <h3 class="product-title">${product.title}</h3>
+                    <p class="product-price">$${product.price.toFixed(2)}</p>
+                    <a href="?id=${product.id}&type=${productType}" class="cta-button-small">
+                        View Details
+                    </a>
+                </div>
+            </div>
+        `).join('');
+}
+
+// Update main image when clicking thumbnails
+function updateMainImage(url, alt) {
+    mainImage.innerHTML = `<img src="${url}" alt="${alt}">`;
+    
+    // Update active thumbnail
+    document.querySelectorAll('.thumbnail-images img').forEach(img => {
+        img.classList.toggle('active', img.src === url);
+    });
+}
+
+// Handle quantity changes
+document.querySelector('.quantity-btn.minus').addEventListener('click', () => {
+    const currentValue = parseInt(quantityInput.value);
+    if (currentValue > 1) {
+        quantityInput.value = currentValue - 1;
+    }
+});
+
+document.querySelector('.quantity-btn.plus').addEventListener('click', () => {
+    const currentValue = parseInt(quantityInput.value);
+    if (currentValue < 99) {
+        quantityInput.value = currentValue + 1;
+    }
+});
+
+// Add to cart functionality
+addToCartBtn.addEventListener('click', () => {
+    const quantity = parseInt(quantityInput.value);
+    addToCart(product.id, productType, quantity);
+});
+
+// Initialize
+if (productId && productType) {
+    fetchProductDetails();
+} else {
+    displayError('Product not found');
+}
+
+// Error display
+function displayError(message = 'An error occurred loading the product') {
+    const container = document.querySelector('.product-detail');
+    container.innerHTML = `
+        <div class="error-message">
+            <p>${message}</p>
+            <a href="../index.html" class="cta-button-small">Return to Shop</a>
+        </div>
+    `;
 }
 
