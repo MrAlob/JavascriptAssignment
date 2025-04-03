@@ -13,6 +13,8 @@ const cartTotal = document.getElementById("cartTotal")
 const checkoutBtn = document.querySelector(".checkout-btn")
 const closeCartBtn = document.querySelector(".close-cart")
 const cartBtn = document.querySelector(".cart-btn")
+const genderFilter = document.getElementById("genderFilter")
+const genreFilter = document.getElementById("genreFilter")
 
 // State
 let cart = []
@@ -108,13 +110,27 @@ function populateCategories(products) {
 function filterProducts() {
   const searchTerm = searchInput.value.toLowerCase()
   const category = categoryFilter.value
+  const gender = genderFilter.value
+  const genre = genreFilter.value
 
   filteredProducts = products.filter((product) => {
     const matchesSearch =
-      product.title.toLowerCase().includes(searchTerm) || product.description.toLowerCase().includes(searchTerm)
+      product.title.toLowerCase().includes(searchTerm) || 
+      product.description.toLowerCase().includes(searchTerm)
+    
     const matchesCategory = category === "all" || product.category === category
+    
+    // Check for gender in title or description
+    const matchesGender = gender === "all" || 
+      product.title.toLowerCase().includes(gender) || 
+      (product.description && product.description.toLowerCase().includes(gender))
+    
+    // Check for genre in title or description
+    const matchesGenre = genre === "all" || 
+      product.title.toLowerCase().includes(genre) || 
+      (product.description && product.description.toLowerCase().includes(genre))
 
-    return matchesSearch && matchesCategory
+    return matchesSearch && matchesCategory && matchesGender && matchesGenre
   })
 
   displayProducts(filteredProducts)
@@ -125,6 +141,10 @@ searchInput.addEventListener("input", filterProducts)
 
 // Category filter event listener
 categoryFilter.addEventListener("change", filterProducts)
+
+// Add event listeners for the new filters
+genderFilter.addEventListener("change", filterProducts)
+genreFilter.addEventListener("change", filterProducts)
 
 // Display products in the grid
 function displayProducts(products) {
