@@ -39,9 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Update page title and metadata
             document.title = `${product.title} | The Shop`;
-            document.querySelector('.breadcrumb .product-title').textContent = product.title;
-            document.querySelector('.breadcrumb .product-category').textContent = 
-                productType.charAt(0).toUpperCase() + productType.slice(1);
 
             // Update main product information
             document.querySelector('h1.product-title').textContent = product.title;

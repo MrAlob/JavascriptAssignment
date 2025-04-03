@@ -1162,12 +1162,8 @@ function getApiEndpoint(type) {
 
 // Display product details
 function displayProductDetails() {
-    // Update breadcrumb and title
-    document.querySelectorAll('.product-title').forEach(el => {
-        el.textContent = product.title;
-    });
-    document.querySelector('.product-category').textContent = 
-        productType.charAt(0).toUpperCase() + productType.slice(1);
+    // Update page title
+    document.querySelector('h1.product-title').textContent = product.title;
     
     // Update main image and thumbnails
     mainImage.innerHTML = `
