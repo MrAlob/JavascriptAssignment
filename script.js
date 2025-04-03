@@ -21,6 +21,10 @@ let cart = []
 let products = []
 let filteredProducts = []
 
+// Add new state variables for pagination
+let currentDisplayPage = 1;
+const productsPerPage = 8;
+
 // Toggle mobile menu
 mobileMenuBtn.addEventListener("click", () => {
   navLinks.classList.toggle("active")
@@ -77,17 +81,46 @@ cartModal.addEventListener("click", (e) => {
 async function fetchProducts() {
   try {
     loading.style.display = "flex"
-    const response = await fetch("https://v2.api.noroff.dev/rainy-days")
     
-    if (!response.ok) {
-      throw new Error(`API responded with status: ${response.status}`)
+    // Initialize products array
+    products = []
+    
+    // Start with page 1
+    let currentPage = 1
+    let hasMorePages = true
+    
+    // Fetch all pages
+    while (hasMorePages) {
+      console.log(`Fetching products page ${currentPage}...`)
+      
+      const response = await fetch(`https://v2.api.noroff.dev/rainy-days?page=${currentPage}&per_page=100`)
+      
+      if (!response.ok) {
+        throw new Error(`API responded with status: ${response.status}`)
+      }
+      
+      const responseData = await response.json()
+      console.log(`Page ${currentPage} data:`, {
+        meta: responseData.meta,
+        count: responseData.data?.length || 0
+      })
+      
+      // Add products from this page to our collection
+      if (responseData.data && responseData.data.length > 0) {
+        products = [...products, ...responseData.data]
+      }
+      
+      // Check if there are more pages
+      const meta = responseData.meta
+      if (meta) {
+        hasMorePages = !meta.isLastPage && meta.nextPage !== null
+        currentPage = meta.nextPage || currentPage + 1
+      } else {
+        hasMorePages = false
+      }
     }
     
-    const responseData = await response.json()
-    console.log("API Response structure:", Object.keys(responseData))
-    
-    // Extract products from the API response (data property contains the products)
-    products = responseData.data || []
+    console.log(`Total products loaded: ${products.length}`)
     
     if (products.length === 0) {
       console.error("No products found in the API response")
@@ -95,10 +128,8 @@ async function fetchProducts() {
       return
     }
     
-    console.log(`Loaded ${products.length} products`)
     if (products.length > 0) {
       console.log("Sample product data structure:", Object.keys(products[0]))
-      console.log("Sample product:", products[0])
       
       // Verify that required properties exist
       const requiredProps = ["id", "title", "description", "gender", "sizes", "baseColor", 
@@ -123,12 +154,50 @@ async function fetchProducts() {
     
     // Display all products
     displayProducts(products)
+    
+    // Add product count indicator
+    addProductCountIndicator(products.length)
+    
   } catch (error) {
     console.error("Error fetching products:", error)
     productsGrid.innerHTML = '<p class="error-message">Error loading products. Please try again later.</p>'
   } finally {
     loading.style.display = "none"
   }
+}
+
+// Add product count indicator
+function addProductCountIndicator(count) {
+  // Create or update product count indicator
+  let countIndicator = document.getElementById("productCountIndicator")
+  
+  if (!countIndicator) {
+    countIndicator = document.createElement("div")
+    countIndicator.id = "productCountIndicator"
+    countIndicator.className = "product-count"
+    
+    // Insert after the filters container
+    const filtersContainer = document.querySelector(".filters")
+    filtersContainer.parentNode.insertBefore(countIndicator, filtersContainer.nextSibling)
+    
+    // Add styles
+    const style = document.createElement("style")
+    style.textContent = `
+      .product-count {
+        margin: 1rem 0;
+        font-size: 0.9rem;
+        color: var(--text-light);
+      }
+    `
+    document.head.appendChild(style)
+  }
+  
+  // Calculate values for current page
+  const startIndex = (currentDisplayPage - 1) * productsPerPage + 1;
+  const endIndex = Math.min(startIndex + productsPerPage - 1, count);
+  
+  // Update the count with pagination info
+  countIndicator.textContent = `Showing ${startIndex}-${endIndex} of ${count} products`
 }
 
 // Populate category filter based on unique tags
@@ -216,6 +285,9 @@ function filterProducts() {
     totalProducts: products.length
   })
 
+  // Reset to first page when applying new filters
+  currentDisplayPage = 1
+
   // If all filters are at their default values, show all products
   if (searchTerm === "" && category === "all" && gender === "all" && genre === "all") {
     filteredProducts = [...products]
@@ -287,6 +359,9 @@ function resetFilters() {
   categoryFilter.value = "all"
   genderFilter.value = "all"
   genreFilter.value = "all"
+  
+  // Reset to first page when filters are reset
+  currentDisplayPage = 1
   
   filteredProducts = [...products]
   displayProducts(filteredProducts)
@@ -367,20 +442,43 @@ genreFilter.addEventListener("change", () => {
   filterProducts()
 })
 
-// Display products in the grid
+// Display products in the grid with pagination
 function displayProducts(products) {
   console.log(`Displaying ${products.length} products`)
+  
+  // Update the product count indicator
+  const countIndicator = document.getElementById("productCountIndicator")
+  if (countIndicator) {
+    countIndicator.textContent = `Showing ${Math.min(productsPerPage, products.length)} of ${products.length} products`
+  }
   
   if (!products || products.length === 0) {
     productsGrid.className = ""
     productsGrid.innerHTML = '<p class="no-products">No products found. Try a different search or category.</p>'
+    
+    // Hide pagination if no products
+    document.getElementById("paginationControls")?.remove();
     return
   }
+
+  // Calculate total pages
+  const totalPages = Math.ceil(products.length / productsPerPage);
+  
+  // Ensure current page is valid
+  if (currentDisplayPage < 1) currentDisplayPage = 1;
+  if (currentDisplayPage > totalPages) currentDisplayPage = totalPages;
+  
+  // Calculate start and end index for current page
+  const startIndex = (currentDisplayPage - 1) * productsPerPage;
+  const endIndex = Math.min(startIndex + productsPerPage, products.length);
+  
+  // Get products for current page
+  const productsToShow = products.slice(startIndex, endIndex);
 
   productsGrid.className = "products-grid"
   
   try {
-    productsGrid.innerHTML = products
+    productsGrid.innerHTML = productsToShow
       .map(
         (product) => `
       <div class="product-card" data-id="${product.id}">
@@ -407,6 +505,10 @@ function displayProducts(products) {
     `,
       )
       .join("")
+      
+    // Create or update pagination controls
+    createPaginationControls(products.length, totalPages);
+    
   } catch (error) {
     console.error("Error displaying products:", error)
     console.error("Error details:", error)
@@ -414,6 +516,111 @@ function displayProducts(products) {
       console.error("First product object:", products[0])
     }
     productsGrid.innerHTML = '<p class="error-message">Error displaying products. Please try again later.</p>'
+  }
+}
+
+// Create pagination controls
+function createPaginationControls(totalProducts, totalPages) {
+  // Remove existing pagination if any
+  let paginationControls = document.getElementById("paginationControls");
+  if (paginationControls) {
+    paginationControls.remove();
+  }
+  
+  // Create new pagination controls
+  paginationControls = document.createElement("div");
+  paginationControls.id = "paginationControls";
+  paginationControls.className = "pagination-controls";
+  
+  // Add styles for pagination
+  if (!document.getElementById("paginationStyles")) {
+    const style = document.createElement("style");
+    style.id = "paginationStyles";
+    style.textContent = `
+      .pagination-controls {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 2rem 0;
+        gap: 1rem;
+      }
+      
+      .pagination-btn {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: var(--radius-md);
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: var(--transition);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      .pagination-btn:hover:not(:disabled) {
+        background-color: var(--primary-hover);
+      }
+      
+      .pagination-btn:disabled {
+        background-color: var(--text-light);
+        cursor: not-allowed;
+        opacity: 0.7;
+      }
+      
+      .pagination-info {
+        font-size: 0.9rem;
+        color: var(--text-light);
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  // Create previous button
+  const prevBtn = document.createElement("button");
+  prevBtn.className = "pagination-btn";
+  prevBtn.textContent = "Previous";
+  prevBtn.disabled = currentDisplayPage <= 1;
+  prevBtn.addEventListener("click", () => {
+    if (currentDisplayPage > 1) {
+      currentDisplayPage--;
+      displayProducts(filteredProducts);
+      // Scroll to products section
+      document.getElementById("products").scrollIntoView({ behavior: "smooth" });
+    }
+  });
+  
+  // Create next button
+  const nextBtn = document.createElement("button");
+  nextBtn.className = "pagination-btn";
+  nextBtn.textContent = "Next";
+  nextBtn.disabled = currentDisplayPage >= totalPages;
+  nextBtn.addEventListener("click", () => {
+    if (currentDisplayPage < totalPages) {
+      currentDisplayPage++;
+      displayProducts(filteredProducts);
+      // Scroll to products section
+      document.getElementById("products").scrollIntoView({ behavior: "smooth" });
+    }
+  });
+  
+  // Create page info
+  const pageInfo = document.createElement("span");
+  pageInfo.className = "pagination-info";
+  pageInfo.textContent = `Page ${currentDisplayPage} of ${totalPages}`;
+  
+  // Append elements to pagination controls
+  paginationControls.appendChild(prevBtn);
+  paginationControls.appendChild(pageInfo);
+  paginationControls.appendChild(nextBtn);
+  
+  // Append pagination controls to the container
+  const container = productsGrid.closest(".container");
+  container.insertBefore(paginationControls, container.querySelector(".newsletter") || null);
+  
+  // If no .newsletter, append to the end of container
+  if (!container.querySelector(".newsletter")) {
+    container.appendChild(paginationControls);
   }
 }
 
