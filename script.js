@@ -129,10 +129,12 @@ categoryFilter.addEventListener("change", filterProducts)
 // Display products in the grid
 function displayProducts(products) {
   if (products.length === 0) {
+    productsGrid.className = ""
     productsGrid.innerHTML = '<p class="no-products">No products found. Try a different search or category.</p>'
     return
   }
 
+  productsGrid.className = "products-grid"
   productsGrid.innerHTML = products
     .map(
       (product) => `
