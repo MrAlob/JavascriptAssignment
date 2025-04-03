@@ -916,3 +916,11 @@ footer {
     margin-top: 0.5rem;
   }
 }
+
+/* Add this to your existing CSS */
+.original-price {
+  text-decoration: line-through;
+  color: var(--text-light);
+  margin-right: 8px;
+  font-size: 0.9rem;
+}

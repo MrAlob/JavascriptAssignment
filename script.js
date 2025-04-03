@@ -73,15 +73,32 @@ cartModal.addEventListener("click", (e) => {
   }
 })
 
-// Fetch products from API
+// Fetch products from Rainy Days API
 async function fetchProducts() {
   try {
     loading.style.display = "flex"
-    const response = await fetch("https://fakestoreapi.com/products")
-    products = await response.json()
+    const response = await fetch("https://v2.api.noroff.dev/rainy-days")
+    
+    if (!response.ok) {
+      throw new Error(`API responded with status: ${response.status}`)
+    }
+    
+    const responseData = await response.json()
+    console.log("API Response:", responseData)
+    
+    // Extract products from the API response (data property contains the products)
+    products = responseData.data || []
+    
+    if (products.length === 0) {
+      console.error("No products found in the API response")
+      productsGrid.innerHTML = '<p class="error-message">No products available at this time. Please check back later.</p>'
+      return
+    }
+    
+    console.log(`Loaded ${products.length} products`)
     filteredProducts = [...products]
 
-    // Populate category filter
+    // Populate category filter based on unique tags
     populateCategories(products)
 
     // Display products
@@ -94,45 +111,70 @@ async function fetchProducts() {
   }
 }
 
-// Populate category filter
+// Populate category filter based on unique tags
 function populateCategories(products) {
-  const categories = [...new Set(products.map((product) => product.category))]
+  // Clear existing options except "All Categories"
+  while (categoryFilter.options.length > 1) {
+    categoryFilter.remove(1);
+  }
 
-  categories.forEach((category) => {
+  // Extract unique tags from all products
+  const allTags = products.flatMap(product => product.tags || [])
+  const uniqueTags = [...new Set(allTags)]
+
+  // Add each unique tag as an option
+  uniqueTags.forEach((tag) => {
     const option = document.createElement("option")
-    option.value = category
-    option.textContent = category.charAt(0).toUpperCase() + category.slice(1)
+    option.value = tag
+    option.textContent = tag.charAt(0).toUpperCase() + tag.slice(1)
     categoryFilter.appendChild(option)
   })
 }
 
-// Filter products based on search and category
+// Filter products based on search, category, gender, and genre
 function filterProducts() {
   const searchTerm = searchInput.value.toLowerCase()
-  const category = categoryFilter.value
+  const category = categoryFilter.value.toLowerCase()
   const gender = genderFilter.value
   const genre = genreFilter.value
 
+  console.log("Filtering products with:", {
+    searchTerm,
+    category,
+    gender,
+    genre,
+    totalProducts: products.length
+  })
+
   filteredProducts = products.filter((product) => {
+    // Match search term in title or description
     const matchesSearch =
       product.title.toLowerCase().includes(searchTerm) || 
-      product.description.toLowerCase().includes(searchTerm)
+      (product.description && product.description.toLowerCase().includes(searchTerm))
     
-    const matchesCategory = category === "all" || product.category === category
+    // Match category (tag)
+    const matchesCategory = 
+      category === "all" || 
+      (product.tags && product.tags.some(tag => tag.toLowerCase() === category))
     
-    // Check for gender in title or description
-    const matchesGender = gender === "all" || 
-      product.title.toLowerCase().includes(gender) || 
-      (product.description && product.description.toLowerCase().includes(gender))
+    // Match gender (exact match from API)
+    const matchesGender = 
+      gender === "all" || 
+      (gender === "men" && product.gender === "Male") ||
+      (gender === "women" && product.gender === "Female") ||
+      (gender === "unisex" && product.gender === "Unisex")
     
-    // Check for genre in title or description
-    const matchesGenre = genre === "all" || 
-      product.title.toLowerCase().includes(genre) || 
-      (product.description && product.description.toLowerCase().includes(genre))
+    // Match genre in title or description or tags
+    const matchesGenre = 
+      genre === "all" || 
+      product.title.toLowerCase().includes(genre.toLowerCase()) || 
+      (product.description && product.description.toLowerCase().includes(genre.toLowerCase())) ||
+      (product.tags && product.tags.some(tag => tag.toLowerCase().includes(genre.toLowerCase())))
 
     return matchesSearch && matchesCategory && matchesGender && matchesGenre
   })
 
+  console.log(`Filtered to ${filteredProducts.length} products`)
   displayProducts(filteredProducts)
 }
 
@@ -142,45 +184,60 @@ searchInput.addEventListener("input", filterProducts)
 // Category filter event listener
 categoryFilter.addEventListener("change", filterProducts)
 
-// Add event listeners for the new filters
+// Gender filter event listener
 genderFilter.addEventListener("change", filterProducts)
+
+// Genre filter event listener
 genreFilter.addEventListener("change", filterProducts)
 
 // Display products in the grid
 function displayProducts(products) {
-  if (products.length === 0) {
+  console.log(`Displaying ${products.length} products`)
+  
+  if (!products || products.length === 0) {
     productsGrid.className = ""
     productsGrid.innerHTML = '<p class="no-products">No products found. Try a different search or category.</p>'
     return
   }
 
   productsGrid.className = "products-grid"
-  productsGrid.innerHTML = products
-    .map(
-      (product) => `
-    <div class="product-card" data-id="${product.id}">
-      <div class="product-image-container">
-        <img src="${product.image}" alt="${product.title}" class="product-image">
-        <img src="${product.image}" alt="${product.title}" class="environment-img">
-        <div class="product-attributes">
-          <span>S</span>
-          <span>M</span>
-          <span>L</span>
-          <span class="out-of-stock">XL</span>
+  
+  try {
+    productsGrid.innerHTML = products
+      .map(
+        (product) => `
+      <div class="product-card" data-id="${product.id}">
+        <div class="product-image-container">
+          <img src="${product.image.url}" alt="${product.image.alt}" class="product-image">
+          <img src="${product.image.url}" alt="${product.image.alt}" class="environment-img">
+          <div class="product-attributes">
+            ${product.sizes.map(size => `<span>${size}</span>`).join('')}
+          </div>
+        </div>
+        <div class="product-info">
+          <div class="product-category">${product.gender} · ${product.baseColor}</div>
+          <h3 class="product-title">${product.title}</h3>
+          <p class="product-price">
+            ${product.onSale 
+              ? `<span class="original-price">$${product.price.toFixed(2)}</span> $${product.discountedPrice.toFixed(2)}` 
+              : `$${product.price.toFixed(2)}`}
+          </p>
+          <button class="add-to-cart" onclick="addToCart('${product.id}')">
+            Add to Cart
+          </button>
         </div>
       </div>
-      <div class="product-info">
-        <div class="product-category">${product.category}</div>
-        <h3 class="product-title">${product.title}</h3>
-        <p class="product-price">$${product.price.toFixed(2)}</p>
-        <button class="add-to-cart" onclick="addToCart(${product.id})">
-          Add to Cart
-        </button>
-      </div>
-    </div>
-  `,
-    )
-    .join("")
+    `,
+      )
+      .join("")
+  } catch (error) {
+    console.error("Error displaying products:", error)
+    console.error("Error details:", error)
+    if (products.length > 0) {
+      console.error("First product object:", products[0])
+    }
+    productsGrid.innerHTML = '<p class="error-message">Error displaying products. Please try again later.</p>'
+  }
 }
 
 // Add product to cart
@@ -238,16 +295,20 @@ function updateCartDisplay() {
     .map(
       (item) => `
     <div class="cart-item" data-id="${item.id}">
-      <img src="${item.image}" alt="${item.title}" class="cart-item-image">
+      <img src="${item.image.url}" alt="${item.image.alt}" class="cart-item-image">
       <div class="cart-item-details">
         <div class="cart-item-title">${item.title}</div>
-        <div class="cart-item-price">$${item.price.toFixed(2)}</div>
+        <div class="cart-item-price">
+          ${item.onSale 
+            ? `$${item.discountedPrice.toFixed(2)}` 
+            : `$${item.price.toFixed(2)}`}
+        </div>
       </div>
       <div class="cart-item-quantity">
-        <button class="quantity-btn" onclick="updateItemQuantity(${item.id}, ${item.quantity - 1})">-</button>
+        <button class="quantity-btn" onclick="updateItemQuantity('${item.id}', ${item.quantity - 1})">-</button>
         <span class="quantity-value">${item.quantity}</span>
-        <button class="quantity-btn" onclick="updateItemQuantity(${item.id}, ${item.quantity + 1})">+</button>
-        <button class="remove-item" onclick="removeFromCart(${item.id})">×</button>
+        <button class="quantity-btn" onclick="updateItemQuantity('${item.id}', ${item.quantity + 1})">+</button>
+        <button class="remove-item" onclick="removeFromCart('${item.id}')">×</button>
       </div>
     </div>
   `,
@@ -255,7 +316,11 @@ function updateCartDisplay() {
     .join("")
 
   // Calculate and display total
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const total = cart.reduce((sum, item) => {
+    const itemPrice = item.onSale ? item.discountedPrice : item.price
+    return sum + itemPrice * item.quantity
+  }, 0)
+  
   cartTotal.textContent = `$${total.toFixed(2)}`
 }
 
