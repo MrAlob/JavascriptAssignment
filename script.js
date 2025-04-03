@@ -20,10 +20,13 @@ const genreFilter = document.getElementById("genreFilter")
 let cart = []
 let products = []
 let filteredProducts = []
+let movies = []
+let games = []
 
 // Add new state variables for pagination
 let currentDisplayPage = 1;
 const productsPerPage = 8;
+let activeCategory = "jackets"; // Default category: jackets, movies, or games
 
 // Toggle mobile menu
 mobileMenuBtn.addEventListener("click", () => {
@@ -77,93 +80,166 @@ cartModal.addEventListener("click", (e) => {
   }
 })
 
-// Fetch products from Rainy Days API
-async function fetchProducts() {
+// Fetch all product data - jackets, movies, and games
+async function fetchAllProducts() {
   try {
-    loading.style.display = "flex"
+    loading.style.display = "flex";
     
-    // Initialize products array
-    products = []
+    // Fetch all three types of products in parallel
+    const [jacketsResponse, moviesResponse, gamesResponse] = await Promise.all([
+      fetch("https://v2.api.noroff.dev/rainy-days"),
+      fetch("https://v2.api.noroff.dev/square-eyes"),
+      fetch("https://v2.api.noroff.dev/gamehub")
+    ]);
     
-    // Start with page 1
-    let currentPage = 1
-    let hasMorePages = true
-    
-    // Fetch all pages
-    while (hasMorePages) {
-      console.log(`Fetching products page ${currentPage}...`)
-      
-      const response = await fetch(`https://v2.api.noroff.dev/rainy-days?page=${currentPage}&per_page=100`)
-      
-      if (!response.ok) {
-        throw new Error(`API responded with status: ${response.status}`)
-      }
-      
-      const responseData = await response.json()
-      console.log(`Page ${currentPage} data:`, {
-        meta: responseData.meta,
-        count: responseData.data?.length || 0
-      })
-      
-      // Add products from this page to our collection
-      if (responseData.data && responseData.data.length > 0) {
-        products = [...products, ...responseData.data]
-      }
-      
-      // Check if there are more pages
-      const meta = responseData.meta
-      if (meta) {
-        hasMorePages = !meta.isLastPage && meta.nextPage !== null
-        currentPage = meta.nextPage || currentPage + 1
-      } else {
-        hasMorePages = false
-      }
+    // Check responses
+    if (!jacketsResponse.ok) {
+      throw new Error(`Jackets API responded with status: ${jacketsResponse.status}`);
+    }
+    if (!moviesResponse.ok) {
+      throw new Error(`Movies API responded with status: ${moviesResponse.status}`);
+    }
+    if (!gamesResponse.ok) {
+      throw new Error(`Games API responded with status: ${gamesResponse.status}`);
     }
     
-    console.log(`Total products loaded: ${products.length}`)
+    // Parse responses
+    const jacketsData = await jacketsResponse.json();
+    const moviesData = await moviesResponse.json();
+    const gamesData = await gamesResponse.json();
     
-    if (products.length === 0) {
-      console.error("No products found in the API response")
-      productsGrid.innerHTML = '<p class="error-message">No products available at this time. Please check back later.</p>'
-      return
-    }
+    // Store products by category
+    products = jacketsData.data || [];
+    movies = moviesData.data || [];
+    games = gamesData.data || [];
     
-    if (products.length > 0) {
-      console.log("Sample product data structure:", Object.keys(products[0]))
-      
-      // Verify that required properties exist
-      const requiredProps = ["id", "title", "description", "gender", "sizes", "baseColor", 
-                          "price", "discountedPrice", "onSale", "image", "tags", "favorite"]
-      
-      const missingProps = requiredProps.filter(prop => !(prop in products[0]))
-      if (missingProps.length > 0) {
-        console.warn("Missing properties in product data:", missingProps)
-      }
-    }
+    console.log(`Loaded ${products.length} jackets, ${movies.length} movies, and ${games.length} games`);
     
-    filteredProducts = [...products]
-
-    // Populate category filter based on unique tags
-    populateCategories(products)
+    // Set up category toggle buttons
+    setupCategoryToggle();
     
-    // Populate genre filter based on product data
-    populateGenreFilter(products)
-    
-    // Add reset filters button
-    addResetFiltersButton()
-    
-    // Display all products
-    displayProducts(products)
-    
-    // Add product count indicator
-    addProductCountIndicator(products.length)
+    // Set default category to jackets
+    switchCategory("jackets");
     
   } catch (error) {
-    console.error("Error fetching products:", error)
-    productsGrid.innerHTML = '<p class="error-message">Error loading products. Please try again later.</p>'
+    console.error("Error fetching products:", error);
+    productsGrid.innerHTML = '<p class="error-message">Error loading products. Please try again later.</p>';
   } finally {
-    loading.style.display = "none"
+    loading.style.display = "none";
   }
+}
+
+// Set up category toggle buttons
+function setupCategoryToggle() {
+  // Add styles for category toggle buttons
+  if (!document.getElementById("categoryToggleStyles")) {
+    const style = document.createElement("style");
+    style.id = "categoryToggleStyles";
+    style.textContent = `
+      .category-toggle {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
+      
+      .category-toggle-btn {
+        background-color: var(--secondary-color);
+        color: var(--text-color);
+        border: none;
+        border-radius: var(--radius-md);
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      .category-toggle-btn.active {
+        background-color: var(--primary-color);
+        color: white;
+      }
+      
+      .category-toggle-btn:hover:not(.active) {
+        background-color: var(--border-color);
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  // Create toggle container
+  const toggleContainer = document.createElement("div");
+  toggleContainer.className = "category-toggle";
+  
+  // Create toggle buttons
+  const jacketsBtn = document.createElement("button");
+  jacketsBtn.className = "category-toggle-btn active";
+  jacketsBtn.textContent = "Jackets";
+  jacketsBtn.addEventListener("click", () => switchCategory("jackets"));
+  
+  const moviesBtn = document.createElement("button");
+  moviesBtn.className = "category-toggle-btn";
+  moviesBtn.textContent = "Movies";
+  moviesBtn.addEventListener("click", () => switchCategory("movies"));
+  
+  const gamesBtn = document.createElement("button");
+  gamesBtn.className = "category-toggle-btn";
+  gamesBtn.textContent = "Games";
+  gamesBtn.addEventListener("click", () => switchCategory("games"));
+  
+  // Append buttons to container
+  toggleContainer.appendChild(jacketsBtn);
+  toggleContainer.appendChild(moviesBtn);
+  toggleContainer.appendChild(gamesBtn);
+  
+  // Insert before the filters
+  const filtersContainer = document.querySelector(".filters");
+  const productsSection = document.querySelector(".products-section .container h2");
+  productsSection.parentNode.insertBefore(toggleContainer, productsSection.nextSibling);
+}
+
+// Switch between product categories
+function switchCategory(category) {
+  activeCategory = category;
+  currentDisplayPage = 1; // Reset to first page
+  
+  // Update active button
+  const buttons = document.querySelectorAll(".category-toggle-btn");
+  buttons.forEach(btn => {
+    if (btn.textContent.toLowerCase() === category) {
+      btn.classList.add("active");
+    } else {
+      btn.classList.remove("active");
+    }
+  });
+  
+  // Reset filters
+  resetFilters();
+  
+  // Show/hide filters based on category
+  const filtersContainer = document.querySelector(".filters");
+  if (category === "jackets") {
+    filtersContainer.style.display = "flex";
+    filteredProducts = [...products];
+    populateCategories(products);
+    populateGenreFilter(products);
+  } else if (category === "movies") {
+    filtersContainer.style.display = "flex";
+    filteredProducts = [...movies];
+    populateCategories(movies);
+    populateGenreFilter(movies);
+  } else if (category === "games") {
+    filtersContainer.style.display = "flex";
+    filteredProducts = [...games];
+    populateCategories(games);
+    populateGenreFilter(games);
+  }
+  
+  // Display the appropriate products
+  displayProducts(filteredProducts);
+  addProductCountIndicator(filteredProducts.length);
 }
 
 // Add product count indicator
@@ -200,30 +276,50 @@ function addProductCountIndicator(count) {
   countIndicator.textContent = `Showing ${startIndex}-${endIndex} of ${count} products`
 }
 
-// Populate category filter based on unique tags
+// Populate category filter based on product type
 function populateCategories(products) {
   // Clear existing options except "All Categories"
   while (categoryFilter.options.length > 1) {
     categoryFilter.remove(1);
   }
 
-  // Extract unique tags from all products
-  const allTags = products.flatMap(product => product.tags || [])
-  // Filter out non-clothing categories if needed (like "womens", "mens" that might overlap with gender)
-  const uniqueTags = [...new Set(allTags)].filter(tag => 
-    tag !== "mens" && tag !== "womens" && tag !== "unisex"
-  )
-
-  console.log("Available category tags:", uniqueTags)
-
-  // Add each unique tag as an option
-  uniqueTags.forEach((tag) => {
-    const option = document.createElement("option")
-    option.value = tag
-    // Format tag name for display (capitalize first letter)
-    option.textContent = tag.charAt(0).toUpperCase() + tag.slice(1)
-    categoryFilter.appendChild(option)
-  })
+  if (activeCategory === "jackets") {
+    // Extract unique tags from jacket products
+    const allTags = products.flatMap(product => product.tags || []);
+    const uniqueTags = [...new Set(allTags)].filter(tag => 
+      tag !== "mens" && tag !== "womens" && tag !== "unisex"
+    );
+    
+    console.log("Available jacket categories:", uniqueTags);
+    
+    // Add each unique tag as an option
+    uniqueTags.forEach((tag) => {
+      const option = document.createElement("option");
+      option.value = tag;
+      option.textContent = tag.charAt(0).toUpperCase() + tag.slice(1);
+      categoryFilter.appendChild(option);
+    });
+    
+    // Show gender filter for jackets
+    document.querySelector(".gender-filter").style.display = "block";
+  } 
+  else if (activeCategory === "movies" || activeCategory === "games") {
+    // Extract unique genres from movies or games
+    const uniqueGenres = [...new Set(products.map(item => item.genre).filter(Boolean))];
+    
+    console.log(`Available ${activeCategory} genres:`, uniqueGenres);
+    
+    // Add each unique genre as an option
+    uniqueGenres.forEach((genre) => {
+      const option = document.createElement("option");
+      option.value = genre.toLowerCase();
+      option.textContent = genre;
+      categoryFilter.appendChild(option);
+    });
+    
+    // Hide gender filter for movies and games
+    document.querySelector(".gender-filter").style.display = "none";
+  }
 }
 
 // Populate genre filter based on products data
@@ -272,79 +368,90 @@ function populateGenreFilter(products) {
 
 // Filter products based on search, category, gender, and genre
 function filterProducts() {
-  const searchTerm = searchInput.value.toLowerCase()
-  const category = categoryFilter.value.toLowerCase()
-  const gender = genderFilter.value
-  const genre = genreFilter.value.toLowerCase() // Make sure it's lowercase for comparison
+  const searchTerm = searchInput.value.toLowerCase();
+  const category = categoryFilter.value.toLowerCase();
+  const gender = genderFilter.value;
+  const genre = genreFilter.value.toLowerCase();
 
-  console.log("Filtering products with:", {
+  console.log(`Filtering ${activeCategory} with:`, {
     searchTerm,
     category,
     gender,
-    genre,
-    totalProducts: products.length
-  })
+    genre
+  });
 
   // Reset to first page when applying new filters
-  currentDisplayPage = 1
+  currentDisplayPage = 1;
 
-  // If all filters are at their default values, show all products
-  if (searchTerm === "" && category === "all" && gender === "all" && genre === "all") {
-    filteredProducts = [...products]
-    console.log("All filters at default - showing all products:", filteredProducts.length)
-    displayProducts(filteredProducts)
-    return
+  // Get the current product set based on active category
+  let currentProducts = [];
+  if (activeCategory === "jackets") {
+    currentProducts = products;
+  } else if (activeCategory === "movies") {
+    currentProducts = movies;
+  } else if (activeCategory === "games") {
+    currentProducts = games;
   }
 
-  filteredProducts = products.filter((product) => {
+  // If all filters are at their default values, show all products in the category
+  if (searchTerm === "" && category === "all" && gender === "all" && genre === "all") {
+    filteredProducts = [...currentProducts];
+    console.log(`All filters at default - showing all ${activeCategory}:`, filteredProducts.length);
+    displayProducts(filteredProducts);
+    return;
+  }
+
+  filteredProducts = currentProducts.filter((product) => {
     // Match search term in title or description
     const matchesSearch =
-      searchTerm === "" || // Empty search matches everything
+      searchTerm === "" ||
       product.title.toLowerCase().includes(searchTerm) || 
-      (product.description && product.description.toLowerCase().includes(searchTerm))
+      (product.description && product.description.toLowerCase().includes(searchTerm));
     
-    // Match category (tag)
-    let matchesCategory = category === "all"
-    
-    if (!matchesCategory && product.tags) {
-      matchesCategory = product.tags.some(tag => tag.toLowerCase() === category)
+    // Match category - handle different product types
+    let matchesCategory = category === "all";
+    if (!matchesCategory) {
+      if (activeCategory === "jackets" && product.tags) {
+        matchesCategory = product.tags.some(tag => tag.toLowerCase() === category);
+      } else if (activeCategory === "movies" || activeCategory === "games") {
+        matchesCategory = product.genre && product.genre.toLowerCase() === category;
+      }
     }
     
-    // Match gender (exact match from API)
+    // Match gender - only applies to jackets
     const matchesGender = 
       gender === "all" || 
+      activeCategory !== "jackets" || // Always match if not jackets
       (gender === "men" && product.gender === "Male") ||
       (gender === "women" && product.gender === "Female") ||
-      (gender === "unisex" && product.gender === "Unisex")
+      (gender === "unisex" && product.gender === "Unisex");
     
-    // Match genre in title, description or tags (improved to be more flexible)
-    let matchesGenre = genre === "all" 
+    // Match genre - different handling for different product types
+    let matchesGenre = genre === "all";
     
     if (!matchesGenre) {
-      // Check in title
-      const titleMatch = product.title.toLowerCase().includes(genre)
-      
-      // Check in description
-      const descMatch = product.description && product.description.toLowerCase().includes(genre)
-      
-      // Check in tags - look for partial matches within tags
-      const tagMatch = product.tags && product.tags.some(tag => 
-        tag.toLowerCase().includes(genre) || genre.includes(tag.toLowerCase())
-      )
-      
-      matchesGenre = titleMatch || descMatch || tagMatch
+      if (activeCategory === "jackets") {
+        // For jackets, check title, description, tags
+        const titleMatch = product.title.toLowerCase().includes(genre);
+        const descMatch = product.description && product.description.toLowerCase().includes(genre);
+        const tagMatch = product.tags && product.tags.some(tag => 
+          tag.toLowerCase().includes(genre) || genre.includes(tag.toLowerCase())
+        );
+        matchesGenre = titleMatch || descMatch || tagMatch;
+      } else if (activeCategory === "movies" || activeCategory === "games") {
+        // For movies and games, check genre, title, description
+        const genreMatch = product.genre && product.genre.toLowerCase().includes(genre);
+        const titleMatch = product.title.toLowerCase().includes(genre);
+        const descMatch = product.description && product.description.toLowerCase().includes(genre);
+        matchesGenre = genreMatch || titleMatch || descMatch;
+      }
     }
 
-    // Debug filter matches when filters are active
-    if (searchTerm !== "" || category !== "all" || gender !== "all" || genre !== "all") {
-      console.log(`Product ${product.title}: Search: ${matchesSearch}, Category: ${matchesCategory}, Gender: ${matchesGender}, Genre: ${matchesGenre}`)
-    }
+    return matchesSearch && matchesCategory && matchesGender && matchesGenre;
+  });
 
-    return matchesSearch && matchesCategory && matchesGender && matchesGenre
-  })
-
-  console.log(`Filtered to ${filteredProducts.length} products`)
-  displayProducts(filteredProducts)
+  console.log(`Filtered to ${filteredProducts.length} ${activeCategory}`);
+  displayProducts(filteredProducts);
 }
 
 // Search input event listener with special handling for empty search
@@ -444,21 +551,23 @@ genreFilter.addEventListener("change", () => {
 
 // Display products in the grid with pagination
 function displayProducts(products) {
-  console.log(`Displaying ${products.length} products`)
+  console.log(`Displaying ${products.length} ${activeCategory}`);
   
   // Update the product count indicator
-  const countIndicator = document.getElementById("productCountIndicator")
+  const countIndicator = document.getElementById("productCountIndicator");
   if (countIndicator) {
-    countIndicator.textContent = `Showing ${Math.min(productsPerPage, products.length)} of ${products.length} products`
+    const startIndex = (currentDisplayPage - 1) * productsPerPage + 1;
+    const endIndex = Math.min(startIndex + productsPerPage - 1, products.length);
+    countIndicator.textContent = `Showing ${startIndex}-${endIndex} of ${products.length} ${activeCategory}`;
   }
   
   if (!products || products.length === 0) {
-    productsGrid.className = ""
-    productsGrid.innerHTML = '<p class="no-products">No products found. Try a different search or category.</p>'
+    productsGrid.className = "";
+    productsGrid.innerHTML = '<p class="no-products">No products found. Try a different search or category.</p>';
     
     // Hide pagination if no products
     document.getElementById("paginationControls")?.remove();
-    return
+    return;
   }
 
   // Calculate total pages
@@ -475,47 +584,104 @@ function displayProducts(products) {
   // Get products for current page
   const productsToShow = products.slice(startIndex, endIndex);
 
-  productsGrid.className = "products-grid"
+  productsGrid.className = "products-grid";
   
   try {
-    productsGrid.innerHTML = productsToShow
-      .map(
-        (product) => `
-      <div class="product-card" data-id="${product.id}">
-        <div class="product-image-container">
-          <img src="${product.image.url}" alt="${product.image.alt}" class="product-image">
-          <img src="${product.image.url}" alt="${product.image.alt}" class="environment-img">
-          <div class="product-attributes">
-            ${product.sizes.map(size => `<span>${size}</span>`).join('')}
+    if (activeCategory === "jackets") {
+      // Jacket display (existing code)
+      productsGrid.innerHTML = productsToShow
+        .map(
+          (product) => `
+        <div class="product-card" data-id="${product.id}">
+          <div class="product-image-container">
+            <img src="${product.image.url}" alt="${product.image.alt}" class="product-image">
+            <img src="${product.image.url}" alt="${product.image.alt}" class="environment-img">
+            <div class="product-attributes">
+              ${product.sizes ? product.sizes.map(size => `<span>${size}</span>`).join('') : ''}
+            </div>
+          </div>
+          <div class="product-info">
+            <div class="product-category">${product.gender} · ${product.baseColor}</div>
+            <h3 class="product-title">${product.title}</h3>
+            <p class="product-price">
+              ${product.onSale 
+                ? `<span class="original-price">$${product.price.toFixed(2)}</span> $${product.discountedPrice.toFixed(2)}` 
+                : `$${product.price.toFixed(2)}`}
+            </p>
+            <button class="add-to-cart" onclick="addToCart('${product.id}', 'jackets')">
+              Add to Cart
+            </button>
           </div>
         </div>
-        <div class="product-info">
-          <div class="product-category">${product.gender} · ${product.baseColor}</div>
-          <h3 class="product-title">${product.title}</h3>
-          <p class="product-price">
-            ${product.onSale 
-              ? `<span class="original-price">$${product.price.toFixed(2)}</span> $${product.discountedPrice.toFixed(2)}` 
-              : `$${product.price.toFixed(2)}`}
-          </p>
-          <button class="add-to-cart" onclick="addToCart('${product.id}')">
-            Add to Cart
-          </button>
+      `,
+        )
+        .join("");
+    } else if (activeCategory === "movies") {
+      // Movie display
+      productsGrid.innerHTML = productsToShow
+        .map(
+          (movie) => `
+        <div class="product-card" data-id="${movie.id}">
+          <div class="product-image-container">
+            <img src="${movie.image.url}" alt="${movie.image.alt}" class="product-image">
+            <img src="${movie.image.url}" alt="${movie.image.alt}" class="environment-img">
+            <div class="product-attributes">
+              <span>${movie.genre}</span>
+              <span>${movie.released}</span>
+              <span>${movie.rating}</span>
+            </div>
+          </div>
+          <div class="product-info">
+            <div class="product-category">Movie · ${movie.genre}</div>
+            <h3 class="product-title">${movie.title}</h3>
+            <p class="product-price">$${movie.price.toFixed(2)}</p>
+            <button class="add-to-cart" onclick="addToCart('${movie.id}', 'movies')">
+              Add to Cart
+            </button>
+          </div>
         </div>
-      </div>
-    `,
-      )
-      .join("")
+      `,
+        )
+        .join("");
+    } else if (activeCategory === "games") {
+      // Game display
+      productsGrid.innerHTML = productsToShow
+        .map(
+          (game) => `
+        <div class="product-card" data-id="${game.id}">
+          <div class="product-image-container">
+            <img src="${game.image.url}" alt="${game.image.alt}" class="product-image">
+            <img src="${game.image.url}" alt="${game.image.alt}" class="environment-img">
+            <div class="product-attributes">
+              <span>${game.genre}</span>
+              <span>${game.released}</span>
+              <span>${game.ageRating || 'All ages'}</span>
+            </div>
+          </div>
+          <div class="product-info">
+            <div class="product-category">Game · ${game.genre}</div>
+            <h3 class="product-title">${game.title}</h3>
+            <p class="product-price">$${game.price.toFixed(2)}</p>
+            <button class="add-to-cart" onclick="addToCart('${game.id}', 'games')">
+              Add to Cart
+            </button>
+          </div>
+        </div>
+      `,
+        )
+        .join("");
+    }
       
     // Create or update pagination controls
     createPaginationControls(products.length, totalPages);
     
   } catch (error) {
-    console.error("Error displaying products:", error)
-    console.error("Error details:", error)
+    console.error(`Error displaying ${activeCategory}:`, error);
+    console.error("Error details:", error);
     if (products.length > 0) {
-      console.error("First product object:", products[0])
+      console.error("First product object:", products[0]);
     }
-    productsGrid.innerHTML = '<p class="error-message">Error displaying products. Please try again later.</p>'
+    productsGrid.innerHTML = '<p class="error-message">Error displaying products. Please try again later.</p>';
   }
 }
 
@@ -625,33 +791,46 @@ function createPaginationControls(totalProducts, totalPages) {
 }
 
 // Add product to cart
-function addToCart(productId) {
-  const product = products.find((p) => p.id === productId)
-  if (!product) return
+function addToCart(productId, productType) {
+  let product;
+  
+  // Find the product based on type
+  if (productType === "jackets") {
+    product = products.find((p) => p.id === productId);
+  } else if (productType === "movies") {
+    product = movies.find((p) => p.id === productId);
+  } else if (productType === "games") {
+    product = games.find((p) => p.id === productId);
+  }
+  
+  if (!product) return;
 
-  const existingItem = cart.find((item) => item.id === productId)
+  // Add product type for later identification
+  product.productType = productType;
+
+  const existingItem = cart.find((item) => item.id === productId && item.productType === productType);
 
   if (existingItem) {
-    existingItem.quantity += 1
+    existingItem.quantity += 1;
   } else {
     cart.push({
       ...product,
       quantity: 1,
-    })
+    });
   }
 
-  updateCartCount()
+  updateCartCount();
 
   // Animation feedback
-  const button = event.target
-  const originalText = button.textContent
-  button.textContent = "Added!"
-  button.style.backgroundColor = "var(--success-color)"
+  const button = event.target;
+  const originalText = button.textContent;
+  button.textContent = "Added!";
+  button.style.backgroundColor = "var(--success-color)";
 
   setTimeout(() => {
-    button.textContent = originalText
-    button.style.backgroundColor = "var(--primary-color)"
-  }, 1000)
+    button.textContent = originalText;
+    button.style.backgroundColor = "var(--primary-color)";
+  }, 1000);
 }
 
 // Update cart count
@@ -788,5 +967,5 @@ document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
 })
 
 // Initialize the page
-fetchProducts()
+fetchAllProducts();
 
