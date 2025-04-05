@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Confirmation | The Shop</title>
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="../../index.html" class="nav-brand">The Shop</a>
+            <button class="mobile-menu-btn" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <ul class="nav-links">
+                <li><a href="../../index.html" class="nav-link">Home</a></li>
+                <li><a href="../../index.html#products" class="nav-link">Shop</a></li>
+                <li><a href="#" class="nav-link">About</a></li>
+                <li><a href="#" class="nav-link">Contact</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="confirmation-page">
+        <div class="container">
+            <div class="confirmation-content">
+                <div class="confirmation-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                </div>
+                
+                <h1>Thank You for Your Order!</h1>
+                <p class="confirmation-message">Your order has been successfully placed.</p>
+                
+                <div class="order-details">
+                    <h2>Order Details</h2>
+                    <div class="order-info">
+                        <div class="info-group">
+                            <span class="label">Order Number:</span>
+                            <span id="orderNumber" class="value">#12345</span>
+                        </div>
+                        <div class="info-group">
+                            <span class="label">Order Date:</span>
+                            <span id="orderDate" class="value">April 4, 2024</span>
+                        </div>
+                        <div class="info-group">
+                            <span class="label">Shipping Address:</span>
+                            <span id="shippingAddress" class="value">
+                                <!-- Shipping address will be inserted here -->
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="ordered-items">
+                        <h3>Items Ordered</h3>
+                        <div id="confirmationItems" class="confirmation-items">
+                            <!-- Ordered items will be inserted here -->
+                        </div>
+                        <div class="order-summary">
+                            <div class="summary-row">
+                                <span>Subtotal:</span>
+                                <span id="confirmationSubtotal">$0.00</span>
+                            </div>
+                            <div class="summary-row">
+                                <span>Shipping:</span>
+                                <span id="confirmationShipping">$0.00</span>
+                            </div>
+                            <div class="summary-row total">
+                                <span>Total:</span>
+                                <span id="confirmationTotal">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="confirmation-actions">
+                    <a href="../../index.html" class="cta-button">Continue Shopping</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../../js/cart.js"></script>
+    <script src="../../script.js"></script>
+    <script src="confirmation.js"></script>
+</body>
+</html>
