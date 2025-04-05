@@ -334,6 +334,57 @@ p {
   font-family: inherit;
 }
 
+.terms-page,
+.privacy-page {
+    padding-top: 80px; /* Adjust this value based on your navbar height */
+}
+
+.terms-page p,
+.terms-page h1,
+.terms-page h2,
+.privacy-page p,
+.privacy-page h1,
+.privacy-page h2 {
+    line-height: 1.8; /* Adjust this value for better spacing */
+    margin-bottom: 1.5rem; /* Add spacing between paragraphs and headings */
+}
+
+.terms-page ul,
+.privacy-page ul {
+    margin-bottom: 1.5rem; /* Add spacing below lists */
+    padding-left: 1.5rem; /* Add indentation for list items */
+}
+
+.terms-page ul li,
+.privacy-page ul li {
+    margin-bottom: 0.5rem; /* Add spacing between list items */
+}
+
+.about-page {
+    margin-top: 70px; /* Match other pages to account for fixed navbar */
+    padding: 4rem 0;
+}
+
+.about-page h1,
+.about-page h2 {
+    margin-bottom: 1rem; /* Reduce spacing below headings */
+    line-height: 1.4; /* Adjust line height for better spacing */
+}
+
+.about-page p {
+    margin-bottom: 1rem; /* Reduce spacing below paragraphs */
+    line-height: 1.6; /* Adjust line height for better readability */
+}
+
+.about-page ul {
+    margin-bottom: 1rem; /* Reduce spacing below lists */
+    padding-left: 1.5rem; /* Add indentation for list items */
+}
+
+.about-page ul li {
+    margin-bottom: 0.5rem; /* Reduce spacing between list items */
+}
+
 .category-filter {
   width: 200px;
 }
@@ -1498,4 +1549,62 @@ footer {
     .confirmation-item-price {
         grid-column: 2;
     }
+}
+
+/* Contact Page Styles */
+.contact-page {
+    margin-top: 70px; /* Match other pages to account for fixed navbar */
+    padding: 4rem 0;
+}
+
+.contact-page h1 {
+    margin-bottom: 1rem;
+    line-height: 1.4;
+}
+
+.contact-page p {
+    margin-bottom: 2rem;
+    max-width: 700px;
+    line-height: 1.6;
+}
+
+.contact-form {
+    max-width: 700px;
+    margin-bottom: 2rem;
+}
+
+.contact-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.contact-form label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.contact-form input,
+.contact-form textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-family: inherit;
+    font-size: 1rem;
+}
+
+.contact-form input:focus,
+.contact-form textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.contact-form textarea {
+    resize: vertical;
+    min-height: 150px;
+}
+
+.contact-form .cta-button {
+    margin-top: 1rem;
 }
