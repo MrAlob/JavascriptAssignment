@@ -88,6 +88,35 @@
         </div>
     </footer>
 
+    <!-- Cart Modal -->
+    <div class="cart-modal" id="cartModal">
+        <div class="cart-modal-content">
+            <div class="cart-modal-header">
+                <h3>Your Cart</h3>
+                <button class="close-cart" aria-label="Close cart">&times;</button>
+            </div>
+            <div class="cart-modal-body">
+                <div id="cartItems" class="cart-items">
+                    <!-- Cart items will be added here -->
+                </div>
+                <div class="cart-empty" id="cartEmpty">
+                    <p>Your cart is empty</p>
+                    <a href="index.html#products" class="cta-button-small">Start Shopping</a>
+                </div>
+            </div>
+            <div class="cart-modal-footer">
+                <div class="cart-total">
+                    <span>Total:</span>
+                    <span id="cartTotal">$0.00</span>
+                </div>
+                <a href="checkout/index.html" class="checkout-btn">Checkout</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/cart.js"></script>
+    <script src="script.js"></script>
+
     <script>
         // Contact form submission
         const contactForm = document.getElementById('contactForm');
