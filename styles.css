@@ -555,10 +555,24 @@ p {
   letter-spacing: 0.5px;
   font-size: 0.8rem;
   margin-top: auto;
+  min-height: 48px; /* Add minimum height */
 }
 
 .add-to-cart:hover {
   background-color: var(--primary-hover);
+}
+
+/* Improve mobile styling for add to cart button */
+@media (max-width: 480px) {
+  .add-to-cart {
+    padding: 1rem; /* Increase padding for better touch targets */
+    font-size: 0.9rem; /* Slightly larger font */
+    font-weight: 600; /* Make text more prominent */
+  }
+  
+  .product-card {
+    margin-bottom: 1rem; /* Add some space between cards */
+  }
 }
 
 /* Product attributes */
