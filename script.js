@@ -21,45 +21,108 @@ let allProducts = [] // New variable to store all products from all categories
 let currentDisplayPage = 1
 const productsPerPage = 8
 
-// Toggle mobile menu
-mobileMenuBtn.addEventListener("click", () => {
-  navLinks.classList.toggle("active")
+// Show loading spinner
+function showLoading(element, message = "Loading...") {
+  // Check if element exists
+  if (!element) return null
 
-  // Toggle hamburger animation
-  mobileMenuBtn.classList.toggle("active")
-  const spans = mobileMenuBtn.querySelectorAll("span")
-  if (mobileMenuBtn.classList.contains("active")) {
-    spans[0].style.transform = "rotate(45deg) translate(5px, 5px)"
-    spans[1].style.opacity = "0"
-    spans[2].style.transform = "rotate(-45deg) translate(7px, -6px)"
+  // Use existing loading element if it exists
+  let loadingEl = document.querySelector(".loading")
+  if (!loadingEl) {
+    loadingEl = document.createElement("div")
+    loadingEl.className = "loading"
+    loadingEl.innerHTML = `
+      <div class="spinner"></div>
+      <p>${message}</p>
+    `
+    element.appendChild(loadingEl)
   } else {
-    spans[0].style.transform = "none"
-    spans[1].style.opacity = "1"
-    spans[2].style.transform = "none"
+    const messageEl = loadingEl.querySelector("p")
+    if (messageEl) {
+      messageEl.textContent = message
+    }
+    loadingEl.style.display = "flex"
   }
-})
+  return loadingEl
+}
+
+// Hide loading spinner
+function hideLoading(loadingElement) {
+  if (loadingElement) {
+    loadingElement.style.display = "none"
+  }
+}
+
+// Show error message
+function showError(message, duration = 3000) {
+  // Create error popup if it doesn't exist
+  let errorPopup = document.getElementById("errorPopup")
+  if (!errorPopup) {
+    errorPopup = document.createElement("div")
+    errorPopup.id = "errorPopup"
+    errorPopup.className = "error-popup"
+    document.body.appendChild(errorPopup)
+  }
+
+  errorPopup.textContent = message
+  errorPopup.classList.add("active")
+
+  // Hide after duration
+  setTimeout(() => {
+    errorPopup.classList.remove("active")
+  }, duration)
+}
+
+// Toggle mobile menu
+if (mobileMenuBtn && navLinks) {
+  mobileMenuBtn.addEventListener("click", () => {
+    navLinks.classList.toggle("active")
+
+    // Toggle hamburger animation
+    mobileMenuBtn.classList.toggle("active")
+    const spans = mobileMenuBtn.querySelectorAll("span")
+    if (mobileMenuBtn.classList.contains("active")) {
+      spans[0].style.transform = "rotate(45deg) translate(5px, 5px)"
+      spans[1].style.opacity = "0"
+      spans[2].style.transform = "rotate(-45deg) translate(7px, -6px)"
+    } else {
+      spans[0].style.transform = "none"
+      spans[1].style.opacity = "1"
+      spans[2].style.transform = "none"
+    }
+  })
+}
 
 // Close mobile menu when clicking outside
-document.addEventListener("click", (e) => {
-  if (
-    navLinks.classList.contains("active") &&
-    !e.target.closest(".nav-links") &&
-    !e.target.closest(".mobile-menu-btn")
-  ) {
-    navLinks.classList.remove("active")
-    mobileMenuBtn.classList.remove("active")
-    const spans = mobileMenuBtn.querySelectorAll("span")
-    spans[0].style.transform = "none"
-    spans[1].style.opacity = "1"
-    spans[2].style.transform = "none"
-  }
-})
+if (navLinks) {
+  document.addEventListener("click", (e) => {
+    if (
+      navLinks.classList.contains("active") &&
+      !e.target.closest(".nav-links") &&
+      !e.target.closest(".mobile-menu-btn")
+    ) {
+      navLinks.classList.remove("active")
+      if (mobileMenuBtn) {
+        mobileMenuBtn.classList.remove("active")
+        const spans = mobileMenuBtn.querySelectorAll("span")
+        spans[0].style.transform = "none"
+        spans[1].style.opacity = "1"
+        spans[2].style.transform = "none"
+      }
+    }
+  })
+}
 
 // Fetch all product data - jackets, movies, and games
 async function fetchAllProducts() {
+  // Check if we're on a page that needs products
+  if (!productsGrid) return
+
+  const productsSection = document.querySelector(".products-section")
+  if (!productsSection) return
+
   try {
-    const loading = document.querySelector(".loading")
-    if (loading) loading.style.display = "flex"
+    const loadingElement = showLoading(productsSection, "Loading products...")
 
     // Fetch all three types of products in parallel
     const [jacketsData, moviesData, gamesData] = await Promise.all([
@@ -89,18 +152,20 @@ async function fetchAllProducts() {
     displayProducts(filteredProducts)
     addProductCountIndicator(filteredProducts.length)
   } catch (error) {
-    console.error("Error fetching products:", error)
+    showError(`Error fetching products: ${error.message}`)
     if (productsGrid) {
       productsGrid.innerHTML = '<p class="error-message">Error loading products. Please try again later.</p>'
     }
   } finally {
-    const loading = document.querySelector(".loading")
-    if (loading) loading.style.display = "none"
+    hideLoading(document.querySelector(".loading"))
   }
 }
 
 // Set up filters based on loaded data
 function setupFilters() {
+  // Only run if we have the necessary elements
+  if (!categoryFilter && !genreFilter && !genderFilter) return
+
   // Set up product category filter (main category filter)
   populateMainCategoryFilter()
 
@@ -399,99 +464,115 @@ function filterProducts() {
   const secondGenreFilter = document.getElementById("secondGenreFilter")
   const secondGenre = secondGenreFilter ? secondGenreFilter.value.toLowerCase() : "all"
 
-  // Reset to first page when applying filters
-  currentDisplayPage = 1
+  // Get the container element
+  const productsSection = document.querySelector(".products-section")
+  if (!productsSection) return
 
-  // Start with all products or the selected category
-  let currentProducts = []
-  if (mainCategory === "all") {
-    currentProducts = [...allProducts]
-  } else if (mainCategory === "jackets") {
-    currentProducts = [...products]
-  } else if (mainCategory === "movies") {
-    currentProducts = [...movies]
-  } else if (mainCategory === "games") {
-    currentProducts = [...games]
-  }
+  // Show loading indicator
+  const loadingElement = showLoading(productsSection, "Filtering products...")
 
-  // If all filters are at their default values and we're showing a specific category,
-  // just show all products from that category
-  if (searchTerm === "" && gender === "all" && genre === "all" && secondGenre === "all") {
-    filteredProducts = [...currentProducts]
-    displayProducts(filteredProducts)
-    return
-  }
+  try {
+    // Reset to first page when applying filters
+    currentDisplayPage = 1
 
-  // Filter the products
-  filteredProducts = currentProducts.filter((product) => {
-    // Match search term in title or description
-    const matchesSearch =
-      searchTerm === "" ||
-      product.title.toLowerCase().includes(searchTerm) ||
-      (product.description && product.description.toLowerCase().includes(searchTerm))
-
-    // Match gender - only applies to jackets
-    const matchesGender =
-      gender === "all" ||
-      product.productCategory !== "jackets" || // Always match if not jackets
-      (gender === "men" && product.gender === "Male") ||
-      (gender === "women" && product.gender === "Female") ||
-      (gender === "unisex" && product.gender === "Unisex")
-
-    // Match genre - different handling for different product types
-    let matchesGenre = genre === "all"
-
-    if (!matchesGenre) {
-      if (product.productCategory === "jackets") {
-        // For jackets, check title, description, tags
-        const titleMatch = product.title.toLowerCase().includes(genre)
-        const descMatch = product.description && product.description.toLowerCase().includes(genre)
-        const tagMatch =
-          product.tags &&
-          product.tags.some((tag) => tag.toLowerCase().includes(genre) || genre.includes(tag.toLowerCase()))
-        matchesGenre = titleMatch || descMatch || tagMatch
-      } else if (product.productCategory === "movies") {
-        // For movies, check genre
-        matchesGenre = product.genre && product.genre.toLowerCase() === genre
-      } else if (product.productCategory === "games") {
-        // For games, check genre
-        matchesGenre = product.genre && product.genre.toLowerCase() === genre
-      }
+    // Start with all products or the selected category
+    let currentProducts = []
+    if (mainCategory === "all") {
+      currentProducts = [...allProducts]
+    } else if (mainCategory === "jackets") {
+      currentProducts = [...products]
+    } else if (mainCategory === "movies") {
+      currentProducts = [...movies]
+    } else if (mainCategory === "games") {
+      currentProducts = [...games]
     }
 
-    // Match second genre (used for ratings in movies/games)
-    let matchesSecondGenre = secondGenre === "all"
+    // If all filters are at their default values and we're showing a specific category,
+    // just show all products from that category
+    if (searchTerm === "" && gender === "all" && genre === "all" && secondGenre === "all") {
+      filteredProducts = [...currentProducts]
+      displayProducts(filteredProducts)
+      return
+    }
 
-    if (!matchesSecondGenre) {
-      if (product.productCategory === "movies") {
-        // For movies, check if the rating starts with the selected value
-        // This will match, for example, "6" with "6.5", "6.7", etc.
-        if (product.rating) {
-          // Try to parse the rating as a number
-          const parsedRating = Number.parseFloat(product.rating)
-          if (!isNaN(parsedRating)) {
-            // Check if the floor of the rating equals the selected value
-            const flooredRating = Math.floor(parsedRating).toString()
-            matchesSecondGenre = flooredRating === secondGenre
-          } else {
-            // For non-numeric ratings, try direct match
-            matchesSecondGenre = product.rating.toLowerCase() === secondGenre
-          }
+    // Filter the products
+    filteredProducts = currentProducts.filter((product) => {
+      // Match search term in title or description
+      const matchesSearch =
+        searchTerm === "" ||
+        product.title.toLowerCase().includes(searchTerm) ||
+        (product.description && product.description.toLowerCase().includes(searchTerm))
+
+      // Match gender - only applies to jackets
+      const matchesGender =
+        gender === "all" ||
+        product.productCategory !== "jackets" || // Always match if not jackets
+        (gender === "men" && product.gender === "Male") ||
+        (gender === "women" && product.gender === "Female") ||
+        (gender === "unisex" && product.gender === "Unisex")
+
+      // Match genre - different handling for different product types
+      let matchesGenre = genre === "all"
+
+      if (!matchesGenre) {
+        if (product.productCategory === "jackets") {
+          // For jackets, check title, description, tags
+          const titleMatch = product.title.toLowerCase().includes(genre)
+          const descMatch = product.description && product.description.toLowerCase().includes(genre)
+          const tagMatch =
+            product.tags &&
+            product.tags.some((tag) => tag.toLowerCase().includes(genre) || genre.includes(tag.toLowerCase()))
+          matchesGenre = titleMatch || descMatch || tagMatch
+        } else if (product.productCategory === "movies") {
+          // For movies, check genre
+          matchesGenre = product.genre && product.genre.toLowerCase() === genre
+        } else if (product.productCategory === "games") {
+          // For games, check genre
+          matchesGenre = product.genre && product.genre.toLowerCase() === genre
         }
-      } else if (product.productCategory === "games") {
-        // For games, check age rating
-        matchesSecondGenre = product.ageRating && product.ageRating.toLowerCase() === secondGenre
       }
-    }
 
-    return matchesSearch && matchesGender && matchesGenre && matchesSecondGenre
-  })
+      // Match second genre (used for ratings in movies/games)
+      let matchesSecondGenre = secondGenre === "all"
 
-  displayProducts(filteredProducts)
+      if (!matchesSecondGenre) {
+        if (product.productCategory === "movies") {
+          // For movies, check if the rating starts with the selected value
+          // This will match, for example, "6" with "6.5", "6.7", etc.
+          if (product.rating) {
+            // Try to parse the rating as a number
+            const parsedRating = Number.parseFloat(product.rating)
+            if (!isNaN(parsedRating)) {
+              // Check if the floor of the rating equals the selected value
+              const flooredRating = Math.floor(parsedRating).toString()
+              matchesSecondGenre = flooredRating === secondGenre
+            } else {
+              // For non-numeric ratings, try direct match
+              matchesSecondGenre = product.rating.toLowerCase() === secondGenre
+            }
+          }
+        } else if (product.productCategory === "games") {
+          // For games, check age rating
+          matchesSecondGenre = product.ageRating && product.ageRating.toLowerCase() === secondGenre
+        }
+      }
+
+      return matchesSearch && matchesGender && matchesGenre && matchesSecondGenre
+    })
+
+    displayProducts(filteredProducts)
+  } catch (error) {
+    showError(`Error filtering products: ${error.message}`)
+  } finally {
+    hideLoading(loadingElement)
+  }
 }
 
 // Add product count indicator
 function addProductCountIndicator(count) {
+  // Check if we're on a page that needs this
+  if (!productsGrid) return
+
   // Create or update product count indicator
   let countIndicator = document.getElementById("productCountIndicator")
 
@@ -746,17 +827,16 @@ function displayProducts(products) {
     // Create or update pagination controls
     createPaginationControls(products.length, totalPages)
   } catch (error) {
-    console.error(`Error displaying products:`, error)
-    console.error("Error details:", error)
-    if (products.length > 0) {
-      console.error("First product object:", products[0])
-    }
+    showError(`Error displaying products: ${error.message}`)
     productsGrid.innerHTML = '<p class="error-message">Error displaying products. Please try again later.</p>'
   }
 }
 
 // Create pagination controls
 function createPaginationControls(totalProducts, totalPages) {
+  // Check if we're on a page that needs pagination
+  if (!productsGrid) return
+
   // Remove existing pagination if any
   let paginationControls = document.getElementById("paginationControls")
   if (paginationControls) {
@@ -909,8 +989,7 @@ async function fetchData(endpoint) {
     }
     return await response.json()
   } catch (error) {
-    console.error("Error fetching data:", error)
-    throw error
+    throw new Error(`Error fetching data: ${error.message}`)
   }
 }
 
@@ -950,13 +1029,15 @@ document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
 
     if (targetElement) {
       // Close mobile menu if open
-      if (navLinks.classList.contains("active")) {
+      if (navLinks && navLinks.classList.contains("active")) {
         navLinks.classList.remove("active")
-        mobileMenuBtn.classList.remove("active")
-        const spans = mobileMenuBtn.querySelectorAll("span")
-        spans[0].style.transform = "none"
-        spans[1].style.opacity = "1"
-        spans[2].style.transform = "none"
+        if (mobileMenuBtn) {
+          mobileMenuBtn.classList.remove("active")
+          const spans = mobileMenuBtn.querySelectorAll("span")
+          spans[0].style.transform = "none"
+          spans[1].style.opacity = "1"
+          spans[2].style.transform = "none"
+        }
       }
 
       // Close cart modal if open
@@ -973,8 +1054,34 @@ document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
   })
 })
 
-// Initialize the page
+// Add styles for error popup
+const errorStyle = document.createElement("style")
+errorStyle.textContent = `
+  .error-popup {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #e53e3e;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 4px;
+    z-index: 9999;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transform: translateX(120%);
+    transition: transform 0.3s ease;
+  }
+  
+  .error-popup.active {
+    transform: translateX(0);
+  }
+`
+document.head.appendChild(errorStyle)
+
+// Initialize the page - only if we're on the main page with products
 document.addEventListener("DOMContentLoaded", () => {
-  fetchAllProducts()
+  // Only run fetchAllProducts if we're on a page with the products grid
+  if (document.getElementById("productsGrid")) {
+    fetchAllProducts()
+  }
 })
 
