@@ -2,7 +2,7 @@
 
 A fully functional e-commerce website built with vanilla HTML, CSS, and JavaScript as part of my Frontend Development studies.
 
-## 🚀 Quick Start
+## Quick Start
 
 Getting started is incredibly simple! No complex setup, no build tools, no package managers required.
 
@@ -16,7 +16,7 @@ That's it! The website will run locally in your browser immediately.
 
 ---
 
-## 📖 About This Project
+## About This Project
 
 This project was created as my **JavaScript 1 assignment** during my Frontend Development studies. It demonstrates fundamental JavaScript concepts, DOM manipulation, and modern web development practices using only vanilla technologies.
 
@@ -32,23 +32,23 @@ This project was created as my **JavaScript 1 assignment** during my Frontend De
 
 ---
 
-## ✨ Features
+## Features
 
-### 🛍️ Core E-commerce Functionality
+### Core E-commerce Functionality
 - **Product Browsing**: Browse products from multiple categories (fashion, movies, games)
 - **Advanced Search & Filtering**: Search by name, filter by category, gender, and genre
 - **Product Details**: Detailed product pages with image galleries and descriptions
 - **Shopping Cart**: Add/remove items, adjust quantities, persistent cart storage
 - **Checkout Process**: Complete order form with validation and confirmation
 
-### 🎨 User Experience
+### User Experience
 - **Responsive Design**: Works seamlessly on desktop, tablet, and mobile devices
 - **Loading States**: Visual feedback during data fetching
 - **Interactive Navigation**: Smooth scrolling and mobile-friendly menu
 - **Newsletter Signup**: Email subscription functionality
 - **Modal Windows**: Cart overlay and product quick views
 
-### 🔧 Technical Features
+### Technical Features
 - **Multiple API Integration**: Combines data from several APIs for a richer product catalog
 - **Pagination**: Efficient loading of large product catalogs
 - **Form Validation**: Client-side validation for checkout and contact forms
@@ -57,7 +57,7 @@ This project was created as my **JavaScript 1 assignment** during my Frontend De
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 JavascriptAssignment/
@@ -84,7 +84,7 @@ JavascriptAssignment/
 
 ---
 
-## 🛠️ Technologies Used
+## Technologies Used
 
 ### Frontend
 - **HTML5**: Semantic markup and accessibility features
@@ -102,7 +102,7 @@ JavascriptAssignment/
 
 ---
 
-## 🎯 Key Learning Objectives Achieved
+## Key Learning Objectives Achieved
 
 1. **JavaScript Fundamentals**
    - Variables, functions, and scope
@@ -131,7 +131,7 @@ JavascriptAssignment/
 
 ---
 
-## 🔍 Code Highlights
+## Code Highlights
 
 ### Dynamic Product Loading
 ```javascript
@@ -185,16 +185,8 @@ function filterProducts() {
 
 ---
 
-## 📱 Browser Compatibility
 
-- **Chrome** 70+ ✅
-- **Firefox** 65+ ✅
-- **Safari** 12+ ✅
-- **Edge** 79+ ✅
-
----
-
-## 🤝 Assignment Context
+## Assignment Context
 
 This project was developed as part of my **JavaScript 1 course** in my Frontend Development program. The assignment requirements included:
 
@@ -210,7 +202,7 @@ The project showcases practical application of core JavaScript concepts in a rea
 
 ---
 
-## 📄 License
+## License
 
 This project is for educational purposes as part of my Frontend Development studies.
 
