@@ -131,6 +131,16 @@ JavascriptAssignment/
 
 ---
 
+## Lessons Learned
+
+- **Modular Thinking**: Splitting logic by page forced me to plan shared utilities early, keeping each script focused on its own responsibilities while reusing storage helpers and UI formatters.
+- **Real-World Data Handling**: Normalizing responses from multiple APIs taught me how to guard against inconsistent schemas, missing fields, and rate limits without breaking the UI.
+- **Resilience Through Validation**: Building thorough form validation highlighted the value of layered feedback (inline messages, disabled buttons, summaries) to guide users instead of simply rejecting submissions.
+- **Performance Awareness**: Implementing search and filtering with large product lists encouraged me to debounce inputs and minimize unnecessary DOM updates to stay responsive on low-powered devices.
+
+
+---
+
 ## Code Highlights
 
 ### Dynamic Product Loading
