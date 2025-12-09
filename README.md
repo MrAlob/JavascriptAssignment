@@ -2,6 +2,8 @@
 
 A fully functional e-commerce website built with vanilla HTML, CSS, and JavaScript as part of my Frontend Development studies.
 
+Link to live demo: https://js1assignment.netlify.app
+
 ## Quick Start
 
 Getting started is incredibly simple! No complex setup, no build tools, no package managers required.
