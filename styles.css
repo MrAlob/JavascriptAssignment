@@ -1218,6 +1218,22 @@ footer {
   border-right: 1px solid var(--border-color);
   text-align: center;
   font-size: 1rem;
+  /* Hide number input spinners/arrows for Chrome, Safari, Edge */
+  -webkit-appearance: none;
+  appearance: textfield;
+}
+
+/* Hide number input spinners/arrows for Chrome, Safari, Edge */
+.quantity-input::-webkit-outer-spin-button,
+.quantity-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Hide number input spinners/arrows for Firefox */
+.quantity-input[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 /* Add to Cart Button Styles */
